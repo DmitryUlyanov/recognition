@@ -16,6 +16,7 @@ class MultiHead(nn.Module):
     def __init__(self, main, args):
         super(MultiHead, self).__init__()
         self.main = main
+
         heads = [torch.nn.Linear(main.fc.in_features, x) for x in args.n_classes]
         self.main.fc = nn.Sequential(nn.Dropout(args.dropout_p))
         self.heads = torch.nn.ModuleList(heads)
@@ -30,6 +31,9 @@ class MultiHead(nn.Module):
 
 def get_net(args):
     model = models.__dict__[args.arch](pretrained=not args.not_pretrained)
+
+    # Hack to make it work with any image size
+    model.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
     model = MultiHead(model, args)
     criterion = nn.CrossEntropyLoss()

@@ -1,13 +1,13 @@
-from src.dataloader import setup_dataset, get_dfs, ImagePreprocessor, seq
-from src.training_testing import run_epoch
-from src.utils import setup, get_optimizer
 import argparse
 import importlib
 import os
 import torch
-import torchvision.transforms as transforms
+
+from src.training_testing import run_epoch
+from src.utils import setup, get_optimizer
 from exp_logger import setup_logging
 
+# Define main args
 parser = argparse.ArgumentParser(conflict_handler='resolve')
 parser.add = parser.add_argument
 
@@ -22,16 +22,18 @@ parser.add('--comment', type=str, default='', help='Just any type of comment')
 parser.add('--optimizer', type=str, default='SGD', help='Just any type of comment')
 parser.add('--optimizer_args', default="lr=1e-1", type=str, help='separated with ";" list of args i.e. "lr=1e-3;betas=(0.5,0.9)"')
 
+parser.add('--num_epochs', type=int, default=123, help='manual seed')
+
 parser.add('--mode', type=str, default="regression",
            help='classification|regression|regression_masked')
 
-# Add model args
 args_, _ = parser.parse_known_args()
+
+# Add model args
 m_model = importlib.import_module('models.' + args_.model)
 m_model.get_args(parser)
 
 # Add dataloader args
-args_, _ = parser.parse_known_args()
 m_dataloader = importlib.import_module('dataloaders.' + args_.dataloader)
 m_dataloader.get_args(parser)
 
@@ -53,7 +55,7 @@ model, criterion = m_model.get_net(args)
 # Load optimizer 
 optimizer = get_optimizer(args)
 
-for epoch in range(0, 200):
+for epoch in range(0, args.num_epochs):
     # if ep == 100:
     #     for param_group in optimizer.param_groups:
     #         param_group['lr'] = param_group['lr']*0.1
