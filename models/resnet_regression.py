@@ -6,7 +6,7 @@ def get_args(parser):
     parser.add('--dropout_p', default=0.5, type=float)
     parser.add('--n_outputs', default=10, type=int)
     parser.add('--not_pretrained', default=False, action='store_true')
-    parser.add('--checkpoint', type=str)
+    parser.add('--checkpoint', type=str, default="")
     parser.add('--arch', default='resnet18', type=str)
 
     return parser

@@ -7,7 +7,7 @@ def get_args(parser):
     parser.add('--dropout_p', default=0.5, type=float)
     parser.add('--arch', default='resnet18', type=str)
     parser.add('--not_pretrained', default=False, action='store_true')
-    parser.add('--checkpoint', type=str)
+    parser.add('--checkpoint', type=str, default="")
 
     return parser
 
@@ -39,7 +39,8 @@ def get_net(args):
     criterion = nn.CrossEntropyLoss()
 
     if args.checkpoint != '':
+        print("Loading pretrained net")
         model.load_state_dict(torch.load(args.checkpoint))
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        
 
     return model.cuda(), criterion.cuda()

@@ -53,7 +53,7 @@ dataloader_train, dataloader_val = m_dataloader.get_dataloaders(args)
 model, criterion = m_model.get_net(args)
 
 # Load optimizer 
-optimizer = get_optimizer(args)
+optimizer = get_optimizer(args, model)
 
 for epoch in range(0, args.num_epochs):
     # if ep == 100:

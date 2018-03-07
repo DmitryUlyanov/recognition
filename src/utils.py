@@ -33,7 +33,7 @@ def setup(args):
     torch.cuda.manual_seed_all(args.manual_seed)
 
 
-def get_optimizer(args):
+def get_optimizer(args, model):
     # Parse parameters 
     optimizer_args = {}
     for entry in args.optimizer_args.split(";"):

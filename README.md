@@ -1,0 +1,1 @@
+Each file in `models` dir should implement `get_args` and `get_net` functions.

@@ -1,12 +1,11 @@
-from torch.utils.data import DataLoader
-
 import torch
-import torchvision.transforms as transforms
-import imgaug as ia
-from imgaug import augmenters as iaa
 import numpy as np
 import pandas as pd
+
+import torchvision.transforms as transforms
+
 from .common import get_image_pil
+from torch.utils.data import DataLoader, Dataset
 
 def get_args(parser):
     parser.add('--splits_dir',  type=str, default="",  help="path to directory with splits")
@@ -88,7 +87,7 @@ def get_dfs(args):
     # Read splits info
     train_df = pd.read_csv(f"{args.splits_dir}/train.csv")
     val_df   = pd.read_csv(f"{args.splits_dir}/val.csv")
-    test_df  = pd.read_csv(f"{args.splits_dir}/test.csv")
+    test_df  = pd.read_csv(f"{args.splits_dir}/val.csv")
 
     target_columns = ['label']
     args.n_classes = [2]
