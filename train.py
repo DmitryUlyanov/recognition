@@ -15,6 +15,8 @@ parser.add('--model', type=str, default="", help='')
 parser.add('--dataloader', type=str, default="", help='')
 
 parser.add('--print_frequency', type=int, default=1, help='manual seed')
+parser.add('--save_frequency', type=int, default=1, help='manual seed')
+
 parser.add('--manual_seed', type=int, default=123, help='manual seed')
 parser.add('--experiments_dir', type=str, default="experiments", help='')
 parser.add('--comment', type=str, default='', help='Just any type of comment')
@@ -65,5 +67,6 @@ for epoch in range(0, args.num_epochs):
     run_epoch(dataloader_train, model, criterion, optimizer, epoch, args.mode, 'train')
     run_epoch(dataloader_val,   model, criterion, optimizer, epoch, args.mode, 'test')
     
-    torch.save(model.state_dict(), f'{args.save_dir}/checkpoints/model_{epoch}.pth')
+    if (epoch != 0) and (epoch % args.save_frequency == 0):
+        torch.save(model.state_dict(), f'{args.save_dir}/checkpoints/model_{epoch}.pth')
 

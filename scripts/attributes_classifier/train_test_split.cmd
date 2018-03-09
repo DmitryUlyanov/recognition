@@ -1,0 +1,1 @@
+python scripts/attributes_classifier/train_test_split.py --class data/attribute_classifier/datasets/race/asian/ --class data/attribute_classifier/datasets/race/black --class data/attribute_classifier/datasets/race/white --save_dir data/attribute_classifier/datasets/race --same_size
