@@ -8,6 +8,8 @@ import torchvision.transforms as transforms
 import torch
 import torch.nn as nn
 import torchvision.models as models
+import numpy as np
+
 print_freq = 1
 
 def setup(args):
@@ -39,6 +41,9 @@ def get_optimizer(args, model):
     for entry in args.optimizer_args.split(";"):
       k, v = entry.split('=')
       optimizer_args[k] = eval(v)
+
+    s  = sum([np.prod(list(p.size())) for p in model.parameters()]); 
+    print ('Number of params: %d' % s)
 
     # Optimizer
     optimizer = torch.optim.__dict__[args.optimizer](model.parameters(), **optimizer_args)

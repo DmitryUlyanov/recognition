@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import pandas as pd
-
+from PIL import Image
 import torchvision.transforms as transforms
 
 from .common import get_image_pil
@@ -61,7 +61,7 @@ class FolderWithImages(Dataset):
 
         row = self.df.loc[index]
 
-        input = get_image_pil(row['fpath'])
+        input = get_image_pil(row['img_path'])
         target = np.array(list(row[self.target_columns].values))
         mask = np.array(list(row[self.target_columns_mask].values))
 
@@ -86,8 +86,8 @@ def get_dfs(args):
 
     # Read splits info
     train_df = pd.read_csv(f"{args.splits_dir}/train.csv")
-    val_df   = pd.read_csv(f"{args.splits_dir}/val.csv")
-    test_df  = pd.read_csv(f"{args.splits_dir}/val.csv")
+    val_df   = pd.read_csv(f"{args.splits_dir}/test.csv")
+    test_df  = pd.read_csv(f"{args.splits_dir}/test.csv")
 
     target_columns = ['label']
     args.n_classes = [2]

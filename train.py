@@ -22,10 +22,12 @@ parser.add('--comment', type=str, default='', help='Just any type of comment')
 parser.add('--optimizer', type=str, default='SGD', help='Just any type of comment')
 parser.add('--optimizer_args', default="lr=1e-1", type=str, help='separated with ";" list of args i.e. "lr=1e-3;betas=(0.5,0.9)"')
 
-parser.add('--num_epochs', type=int, default=123, help='manual seed')
+parser.add('--num_epochs', type=int, default=100, help='manual seed')
 
 parser.add('--mode', type=str, default="regression",
            help='classification|regression|regression_masked')
+
+parser.add('--no-logging', default=False, action="store_true")
 
 args_, _ = parser.parse_known_args()
 
@@ -40,7 +42,7 @@ m_dataloader.get_args(parser)
 args, default_args = parser.parse_args(), parser.parse_args([])
 
 # Setup logging and save dir
-args.save_dir = setup_logging(args, default_args, [])
+args.save_dir = 'data' if args.no_logging else setup_logging(args, default_args, [])
 os.makedirs(f'{args.save_dir}/checkpoints', exist_ok=True)
 
 # Setup everything else
