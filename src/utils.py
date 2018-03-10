@@ -10,21 +10,12 @@ import torch.nn as nn
 import torchvision.models as models
 import numpy as np
 
-print_freq = 1
-
 def setup(args):
     torch.set_num_threads(1)
     cv2.setNumThreads(1)
 
     args.cuda = True
     torch.backends.cudnn.benchmark = True
-    
-    torch.set_num_threads(4)
-
-    try:
-        os.makedirs(args.save_dir)
-    except OSError:
-        print('Directory was not created.')
 
     if args.manual_seed is None:
         args.manual_seed = random.randint(1, 10000)
@@ -49,6 +40,12 @@ def get_optimizer(args, model):
     optimizer = torch.optim.__dict__[args.optimizer](model.parameters(), **optimizer_args)
 
     return optimizer    
+
+
+def fn(self):
+    return self.cpu().data.numpy()
+
+torch.autograd.Variable.to_numpy = fn
 
 
 # def load_model(args):

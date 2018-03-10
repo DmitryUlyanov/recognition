@@ -3,9 +3,11 @@ import importlib
 import os
 import torch
 
-from src.training_testing import run_epoch
+# from src.training_testing import run_epoch
 from src.utils import setup, get_optimizer
 from exp_logger import setup_logging
+
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 # Define main args
 parser = argparse.ArgumentParser(conflict_handler='resolve')
@@ -15,7 +17,7 @@ parser.add('--model', type=str, default="", help='')
 parser.add('--dataloader', type=str, default="", help='')
 
 parser.add('--print_frequency', type=int, default=1, help='manual seed')
-parser.add('--save_frequency', type=int, default=1, help='manual seed')
+parser.add('--save_frequency',  type=int, default=5, help='manual seed')
 
 parser.add('--manual_seed', type=int, default=123, help='manual seed')
 parser.add('--experiments_dir', type=str, default="experiments", help='')
@@ -51,22 +53,29 @@ os.makedirs(f'{args.save_dir}/checkpoints', exist_ok=True)
 setup(args)
 
 # Load splits and preprocess target
-dataloader_train, dataloader_val = m_dataloader.get_dataloaders(args)
+dataloader_train = m_dataloader.get_dataloader(args, 'train')
+dataloader_val   = m_dataloader.get_dataloader(args, 'val')
 
 # Load model 
 model, criterion = m_model.get_net(args)
 
-# Load optimizer 
+# Load optimizer and scheduler
 optimizer = get_optimizer(args, model)
+scheduler = ReduceLROnPlateau(optimizer, 'min', patience=10)
+
+
+m_runner = importlib.import_module('runners.' + args_.mode)
+
 
 for epoch in range(0, args.num_epochs):
-    # if ep == 100:
-    #     for param_group in optimizer.param_groups:
-    #         param_group['lr'] = param_group['lr']*0.1
-
-    run_epoch(dataloader_train, model, criterion, optimizer, epoch, args.mode, 'train')
-    run_epoch(dataloader_val,   model, criterion, optimizer, epoch, args.mode, 'test')
+    model.train()
+    m_runner.run_epoch_train(dataloader_train, model, criterion, optimizer, epoch)
     
+    model.eval()
+    val_loss = m_runner.run_epoch_test (dataloader_val,   model, criterion, epoch)
+    
+    scheduler.step(val_loss)
+
     if (epoch != 0) and (epoch % args.save_frequency == 0):
         torch.save(model.state_dict(), f'{args.save_dir}/checkpoints/model_{epoch}.pth')
 

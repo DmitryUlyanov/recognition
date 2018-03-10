@@ -15,23 +15,35 @@ def get_args(parser):
 
     return parser
 
-def get_dataloaders(args):
+def get_dataloader(args, part):
     train_df, val_df, test_df, target_columns, preprocessor = get_dfs(args)
 
-    train_transform = transforms.Compose([
-        transforms.Resize([args.image_size, args.image_size]),
-        transforms.ToTensor(),
-    ])
+    if part == 'train':
+        train_transform = transforms.Compose([
+            transforms.Resize([args.image_size, args.image_size]),
+            transforms.ToTensor(),
+        ])
 
-    val_transform = transforms.Compose([
-        transforms.Resize([args.image_size, args.image_size]),
-        transforms.ToTensor(),
-    ])
+        dataloader_train = setup_dataset(train_df, target_columns, train_transform, args.batch_size, args.num_workers)
+        return dataloader_train
 
-    dataloader_train = setup_dataset(train_df, target_columns, train_transform, args.batch_size, args.num_workers)
-    dataloader_val = setup_dataset(val_df, target_columns, val_transform, args.batch_size, args.num_workers, drop_last=False, shuffle=False)
+    elif part == 'val':
+        val_transform = transforms.Compose([
+            transforms.Resize([args.image_size, args.image_size]),
+            transforms.ToTensor(),
+        ])
 
-    return dataloader_train, dataloader_val
+        dataloader_val = setup_dataset(val_df, target_columns, val_transform, args.batch_size, args.num_workers, drop_last=False, shuffle=False)
+        return dataloader_val
+
+    elif part == 'test':
+        test_transform = transforms.Compose([
+            transforms.Resize([args.image_size, args.image_size]),
+            transforms.ToTensor(),
+        ])
+
+        dataloader_test = setup_dataset(test_df, target_columns, val_transform, args.batch_size, args.num_workers, drop_last=False, shuffle=False)
+        return dataloader_test
 
 
 
