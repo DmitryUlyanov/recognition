@@ -1,3 +1,6 @@
 [submodule "exp_logger"]
 	path = exp_logger
 	url = git@github.com:DmitryUlyanov/exp_logger.git
+[submodule "extensions/rawr"]
+	path = extensions/rawr
+	url = git@gitlab.com:rawr_io/recognition_rawr.git
