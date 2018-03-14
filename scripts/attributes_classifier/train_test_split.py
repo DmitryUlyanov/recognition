@@ -15,7 +15,6 @@ parser.add = parser.add_argument
 
 parser.add('--class', type=str, action='append', dest='classes',
                     default=[], help='')
-# parser.add('--dir_class1', type=str, default="", help='')
 
 parser.add('--random_state', type=int, default=660, help='')
 

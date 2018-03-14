@@ -61,7 +61,7 @@ model, criterion = m_model.get_net(args)
 
 # Load optimizer and scheduler
 optimizer = get_optimizer(args, model)
-scheduler = ReduceLROnPlateau(optimizer, 'min', patience=10)
+scheduler = ReduceLROnPlateau(optimizer, 'min', patience=5)
 
 
 m_runner = importlib.import_module('runners.' + args_.mode)

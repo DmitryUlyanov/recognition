@@ -88,7 +88,7 @@ class FolderWithImages(Dataset):
             target = self.target_transform(target)
 
         # print(target, mask)
-        return input, target, mask
+        return 1, input, target#, mask
 
     def __len__(self):
         return self.df.shape[0]
