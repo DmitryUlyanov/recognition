@@ -3,8 +3,7 @@ import importlib
 import os
 import torch
 
-# from src.training_testing import run_epoch
-from src.utils import setup, get_optimizer
+from src.utils import setup, get_optimizer, load_module
 from exp_logger import setup_logging
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -26,6 +25,7 @@ parser.add('--comment', type=str, default='', help='Just any type of comment')
 parser.add('--optimizer', type=str, default='SGD', help='Just any type of comment')
 parser.add('--optimizer_args', default="lr=1e-1", type=str, help='separated with ";" list of args i.e. "lr=1e-3;betas=(0.5,0.9)"')
 
+parser.add('--extension', type=str, default="", help='manual seed')
 parser.add('--num_epochs', type=int, default=100, help='manual seed')
 
 parser.add('--mode', type=str, default="regression",
@@ -35,12 +35,13 @@ parser.add('--no-logging', default=False, action="store_true")
 
 args_, _ = parser.parse_known_args()
 
+
 # Add model args
-m_model = importlib.import_module('models.' + args_.model)
+m_model = load_module(args_.extension, 'models', args_.model)
 m_model.get_args(parser)
 
 # Add dataloader args
-m_dataloader = importlib.import_module('dataloaders.' + args_.dataloader)
+m_dataloader = load_module(args_.extension, 'dataloaders', args_.dataloader) 
 m_dataloader.get_args(parser)
 
 args, default_args = parser.parse_args(), parser.parse_args([])
@@ -63,8 +64,8 @@ model, criterion = m_model.get_net(args)
 optimizer = get_optimizer(args, model)
 scheduler = ReduceLROnPlateau(optimizer, 'min', patience=5)
 
-
-m_runner = importlib.import_module('runners.' + args_.mode)
+# Load runner
+m_runner = load_module(args_.extension, 'runners', args_.mode)
 
 
 for epoch in range(0, args.num_epochs):

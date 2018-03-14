@@ -41,6 +41,18 @@ def get_optimizer(args, model):
 
     return optimizer    
 
+def load_module(extension, module_type, module_name):
+    '''
+        module_type : models | dataloaders 
+    '''
+    if extension == '':
+        m = importlib.import_module(f'{module_type}.{module_name}')
+    else:
+        m = importlib.import_module(f'extensions.{extension}.{module_type}.{module_name}')
+
+    return m
+
+
 
 def fn(self):
     return self.cpu().data.numpy()
