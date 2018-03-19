@@ -14,8 +14,8 @@ parser.add = parser.add_argument
 
 parser.add('--model', type=str, default="", help='')
 parser.add('--dataloader', type=str, default="", help='')
+parser.add('--runner', type=str, default="", help='')
 
-parser.add('--print_frequency', type=int, default=1, help='manual seed')
 parser.add('--save_frequency',  type=int, default=5, help='manual seed')
 
 parser.add('--manual_seed', type=int, default=123, help='manual seed')
@@ -33,6 +33,8 @@ parser.add('--mode', type=str, default="regression",
 
 parser.add('--no-logging', default=False, action="store_true")
 
+# parser.add('--args-to-ignore', default='')
+
 args_, _ = parser.parse_known_args()
 
 
@@ -43,6 +45,10 @@ m_model.get_args(parser)
 # Add dataloader args
 m_dataloader = load_module(args_.extension, 'dataloaders', args_.dataloader) 
 m_dataloader.get_args(parser)
+
+# Add runner args
+m_runner = load_module(args_.extension, 'runners', args_.runner)
+m_runner.get_args(parser)
 
 args, default_args = parser.parse_args(), parser.parse_args([])
 
@@ -64,19 +70,15 @@ model, criterion = m_model.get_net(args)
 optimizer = get_optimizer(args, model)
 scheduler = ReduceLROnPlateau(optimizer, 'min', patience=5)
 
-# Load runner
-m_runner = load_module(args_.extension, 'runners', args_.mode)
-
-
 for epoch in range(0, args.num_epochs):
     model.train()
-    m_runner.run_epoch_train(dataloader_train, model, criterion, optimizer, epoch)
+    m_runner.run_epoch_train(dataloader_train, model, criterion, optimizer, epoch, args)
     
     model.eval()
-    val_loss = m_runner.run_epoch_test (dataloader_val,   model, criterion, epoch)
+    val_loss = m_runner.run_epoch_test (dataloader_val,   model, criterion, epoch, args)
     
     scheduler.step(val_loss)
 
     if (epoch != 0) and (epoch % args.save_frequency == 0):
-        torch.save(model.state_dict(), f'{args.save_dir}/checkpoints/model_{epoch}.pth')
+        torch.save(model.state_dict(), f'{args.save_dir}/checkpoints/model_{epoch}.pth', pickle_protocol=-1)
 

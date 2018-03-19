@@ -48,7 +48,17 @@ def load_module(extension, module_type, module_name):
     if extension == '':
         m = importlib.import_module(f'{module_type}.{module_name}')
     else:
-        m = importlib.import_module(f'extensions.{extension}.{module_type}.{module_name}')
+        if os.path.exists(f'extensions/{extension}/{module_type}/{module_name}.py'):
+            m = importlib.import_module(f'extensions.{extension}.{module_type}.{module_name}')
+        else:
+            print(f'Extension module {extension}/{module_type}/{module_name} not found.')
+            
+            if os.path.exists(f'{module_type}/{module_name}.py'):
+                m = importlib.import_module(f'{module_type}.{module_name}')
+            else:       
+                print(f"Default module {module_name} not found.")
+                assert False
+            
 
     return m
 

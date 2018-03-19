@@ -18,8 +18,9 @@ from .common import AverageMeter, accuracy
 
 def get_args(parser):
   parser.add('--use_mixup',  default=False, action='store_true')
-  parser.add('--print_freq', type=int, default=1)
   parser.add('--mixup_alpha', type=float, default=0.1)
+
+  parser.add('--print_frequency', type=int, default=1)
   
   return parser
 
@@ -40,7 +41,7 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
         # Measure data loading time
         data_time.update(time.time() - end)
 
-        if args.mixup:
+        if args.use_mixup:
           x1, x2 = x_[:batch_size // 2].cuda(async=True), x_[batch_size // 2:].cuda(async=True)
           y1, y2 = y_[:batch_size // 2].cuda(async=True), y_[batch_size // 2:].cuda(async=True)
         
@@ -55,6 +56,7 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
         output = model(x_var)
 
         y_var = y_var.type(torch.cuda.LongTensor)
+        
         losses_ = [criterion(output[i], y_var[:, i]) for i in range(len(output))]
         loss = sum(losses_)
 
@@ -68,7 +70,7 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if it % args.print_freq == 0:
+        if it % args.print_frequency == 0:
             print(f'Epoch: [{epoch}][{it}/{len(dataloader)}]\t'\
                   f'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'\
                   f'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'\
@@ -123,15 +125,14 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
 
         avg_loss.update(loss.data[0], x.shape[0])
 
-        # prec1 = accuracy(output.data, target, topk=(1, 5))
-        top1_ = [accuracy(output[i].data, y_var[:, i].data, topk=(1,)) for i in range(len(output))]
-        top1.update(sum([o[0].cpu().numpy()[0] for o in top1_]), x.shape[0])
+        top1_ = [accuracy(output[i].data, y_var[:, i].data.contiguous(), topk=(1,)) for i in range(len(output))]
+        top1.update(np.mean([o[0].cpu().numpy()[0] for o in top1_]), x.shape[0])
         
         # Measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if it % args.print_freq == 0:
+        if it % args.print_frequency == 0:
             print(f'Epoch: [{epoch}][{it}/{len(dataloader)}]\t'\
                   f'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'\
                   f'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'\
