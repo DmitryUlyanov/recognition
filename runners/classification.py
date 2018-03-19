@@ -16,11 +16,14 @@ from torch.autograd import Variable
 from torch.nn.functional import softmax
 from .common import AverageMeter, accuracy
 
-alpha = 0.1
-# dbeta = beta.Beta(torch.Tensor([alpha]), torch.Tensor([1 + alpha]))
-mixup = False
+def get_args(parser):
+  parser.add('--use_mixup',  default=False, action='store_true')
+  parser.add('--print_freq', type=int, default=1)
+  parser.add('--mixup_alpha', type=float, default=0.1)
+  
+  return parser
 
-def run_epoch_train(dataloader, model, criterion, optimizer, epoch, print_freq = 1):
+def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -28,33 +31,25 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, print_freq =
     outputs = []
 
     end = time.time()
-    # for it, ((x1, y1), (x2, y2)) in enumerate(zip(dataloader, dataloader)):
-        
+    
 
-    #     # Measure data loading time
-    #     data_time.update(time.time() - end)
-
-    #     x1, x2 = x2.cuda(async=True), x2.cuda(async=True)
-    #     y1, y2 = y1.cuda(async=True), y2.cuda(async=True)
-        
-        # lam = dbeta.sample( (x1.shape[0], 1, 1, 1))
-    for it, (_, x_, y_) in enumerate(dataloader):
+    for it, (names, x_, y_) in enumerate(dataloader):
         
         batch_size = x_.shape[0]  
 
         # Measure data loading time
         data_time.update(time.time() - end)
 
-        if mixup:
+        if args.mixup:
           x1, x2 = x_[:batch_size // 2].cuda(async=True), x_[batch_size // 2:].cuda(async=True)
           y1, y2 = y_[:batch_size // 2].cuda(async=True), y_[batch_size // 2:].cuda(async=True)
         
-          lam = torch.from_numpy(np.random.beta(alpha+1, alpha, [batch_size // 2,1,1,1]).astype(np.float32)).cuda(async=True)
+          lam = torch.from_numpy(np.random.beta(args.mixup_alpha + 1, args.mixup_alpha, [batch_size // 2, 1, 1, 1]).astype(np.float32)).cuda(async=True)
 
-          x_var  = Variable(x1 * lam + x2 * (1 - lam))
+          x_var = Variable(x1 * lam + x2 * (1 - lam))
           y_var = Variable(y1)
         else: 
-          x_var  = Variable(x_.cuda(async=True))
+          x_var = Variable(x_.cuda(async=True))
           y_var = Variable(y_.cuda(async=True))
 
         output = model(x_var)
@@ -73,7 +68,7 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, print_freq =
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if it % print_freq == 0:
+        if it % args.print_freq == 0:
             print(f'Epoch: [{epoch}][{it}/{len(dataloader)}]\t'\
                   f'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'\
                   f'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'\
@@ -90,7 +85,7 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, print_freq =
           f' *\t\n')
 
         
-def run_epoch_test(dataloader, model, criterion, epoch, print_freq = 1, need_softmax=False, need_preds=False):
+def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False, need_preds=False):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     
@@ -136,7 +131,7 @@ def run_epoch_test(dataloader, model, criterion, epoch, print_freq = 1, need_sof
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if it % print_freq == 0:
+        if it % args.print_freq == 0:
             print(f'Epoch: [{epoch}][{it}/{len(dataloader)}]\t'\
                   f'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'\
                   f'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'\
