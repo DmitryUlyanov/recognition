@@ -28,8 +28,7 @@ parser.add('--optimizer_args', default="lr=1e-1", type=str, help='separated with
 parser.add('--extension', type=str, default="", help='manual seed')
 parser.add('--num_epochs', type=int, default=100, help='manual seed')
 
-parser.add('--mode', type=str, default="regression",
-           help='classification|regression|regression_masked')
+parser.add('--patience', type=int, default=5)
 
 parser.add('--no-logging', default=False, action="store_true")
 
@@ -68,7 +67,7 @@ model, criterion = m_model.get_net(args)
 
 # Load optimizer and scheduler
 optimizer = get_optimizer(args, model)
-scheduler = ReduceLROnPlateau(optimizer, 'min', patience=5)
+scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args.patience, factor=0.3, verbose=True)
 
 for epoch in range(0, args.num_epochs):
     model.train()
