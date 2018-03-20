@@ -31,10 +31,18 @@ parser.add('--num_epochs', type=int, default=100, help='manual seed')
 parser.add('--patience', type=int, default=5)
 
 parser.add('--no-logging', default=False, action="store_true")
+parser.add('--args-to-ignore', type=str, default="")
 
-# parser.add('--args-to-ignore', default='')
 
 args_, _ = parser.parse_known_args()
+
+# try:
+m = importlib.import_module(f'extensions.{args_.extension}.config')
+m.update_defaults(parser)
+# except Exception as e:
+#     print ('Config not found.')
+#     pass
+
 
 
 # Add model args

@@ -42,16 +42,16 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
         data_time.update(time.time() - end)
 
         if args.use_mixup:
-          x1, x2 = x_[:batch_size // 2].cuda(async=True), x_[batch_size // 2:].cuda(async=True)
-          y1, y2 = y_[:batch_size // 2].cuda(async=True), y_[batch_size // 2:].cuda(async=True)
-        
-          lam = torch.from_numpy(np.random.beta(args.mixup_alpha + 1, args.mixup_alpha, [batch_size // 2, 1, 1, 1]).astype(np.float32)).cuda(async=True)
+            x1, x2 = x_[:batch_size // 2].cuda(async=True), x_[batch_size // 2:].cuda(async=True)
+            y1, y2 = y_[:batch_size // 2].cuda(async=True), y_[batch_size // 2:].cuda(async=True)
+          
+            lam = torch.from_numpy(np.random.beta(args.mixup_alpha + 1, args.mixup_alpha, [batch_size // 2, 1, 1, 1]).astype(np.float32)).cuda(async=True)
 
-          x_var = Variable(x1 * lam + x2 * (1 - lam))
-          y_var = Variable(y1)
+            x_var = Variable(x1 * lam + x2 * (1 - lam))
+            y_var = Variable(y1)
         else: 
-          x_var = Variable(x_.cuda(async=True))
-          y_var = Variable(y_.cuda(async=True))
+            x_var = Variable(x_.cuda(async=True))
+            y_var = Variable(y_.cuda(async=True))
 
         output = model(x_var)
 
@@ -151,9 +151,26 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
           f' *\t\n')
 
     if need_preds:
-        # outputs = np.concatenate(outputs)
+        # Get list of names
+        all_names = sum(all_names, [])
 
-        return loss.data[0], outputs
+        # Rearrange the data a little
+        p = []
+        for i, pr in enumerate(outputs):
+            num_obj = pr[0].shape[0] # batch size
+            
+            for j in range(num_obj):
+                p.append([pr_class[j] for pr_class in pr])
+
+        '''
+        Get dict  of type
+            
+            name: [ preds_for_class_1, preds_for_class_2, ... ] 
+        '''
+        d = {k: v for k, v in zip(all_names, p)}
+        
+
+        return loss.data[0], d
 
     return loss.data[0]
 
