@@ -29,7 +29,7 @@ def setup(args):
 def get_optimizer(args, model):
     # Parse parameters 
     optimizer_args = {}
-    for entry in args.optimizer_args.split(";"):
+    for entry in args.optimizer_args.split("^"):
       k, v = entry.split('=')
       optimizer_args[k] = eval(v)
 
@@ -40,6 +40,49 @@ def get_optimizer(args, model):
     optimizer = torch.optim.__dict__[args.optimizer](model.parameters(), **optimizer_args)
 
     return optimizer    
+
+def get_args_and_modules(parser):
+    '''
+        Gathers args from modules and config
+    '''
+    args_, _ = parser.parse_known_args()
+
+    # Update main defaults
+    m_config = load_config(args_.extension)
+    if m_config is not None:
+        m_config.update_defaults(parser)
+
+    # Parse with new defaults
+    args_, _ = parser.parse_known_args()
+
+    # Add model args
+    m_model = load_module(args_.extension, 'models', args_.model)
+    m_model.get_args(parser)
+
+    # Add dataloader args
+    m_dataloader = load_module(args_.extension, 'dataloaders', args_.dataloader) 
+    m_dataloader.get_args(parser)
+
+    # Add runner args
+    m_runner = load_module(args_.extension, 'runners', args_.runner)
+    m_runner.get_args(parser)
+
+    # Again import defaults
+    if m_config is not None:
+        m_config.update_defaults(parser)
+
+    # Finally parse everything
+    args, default_args = parser.parse_args(), parser.parse_args([])
+
+    return args, default_args, dict(runner=m_runner, dataloader=m_dataloader, model=m_model)
+
+def load_config(extension):
+    if extension != "" and os.path.exists(f'extensions/{extension}/config.py'):
+        print (f'Using config extensions/{extension}/config.py.')
+        return importlib.import_module(f'extensions.{extension}.config')
+    else:
+        print ('Config not found.')
+        return None 
 
 def load_module(extension, module_type, module_name):
     '''

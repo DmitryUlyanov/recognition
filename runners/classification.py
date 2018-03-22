@@ -20,7 +20,7 @@ def get_args(parser):
   parser.add('--use_mixup',  default=False, action='store_true')
   parser.add('--mixup_alpha', type=float, default=0.1)
 
-  parser.add('--print_frequency', type=int, default=1)
+  parser.add('--print_frequency', type=int, default=50)
   
   return parser
 
@@ -81,7 +81,7 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
     
     print(f' * \n'
           f' * Epoch {epoch} Training:\t'
-          f'Loss {losses.val:.4f} ({losses.avg:.4f})\t'
+          f'Loss {losses.avg:.4f}\t'
           #           'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
           #           'Prec@5 {top5.val:.3f} ({top5.avg:.3f})\n'
           f' *\t\n')
@@ -145,8 +145,8 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
 
     print(f' * \n'
           f' * Epoch {epoch} Testing:\t'
-          f'Loss {avg_loss.val:.4f} ({avg_loss.avg:.4f})\t'
-          f'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+          f'Loss {avg_loss.avg:.4f}\t'
+          f'Prec@1 {top1.avg:.3f}\t'
           #           'Prec@5 {top5.val:.3f} ({top5.avg:.3f})\n'
           f' *\t\n')
 

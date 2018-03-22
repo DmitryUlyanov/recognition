@@ -28,6 +28,11 @@ parser.add('--preds_save_path', default="", type=str)
 
 args_, _ = parser.parse_known_args()
 
+m = importlib.import_module(f'extensions.{args_.extension}.config')
+m.update_defaults(parser)
+
+args_, _ = parser.parse_known_args()
+
 # Add model args
 m_model = load_module(args_.extension, 'models', args_.model)
 m_model.get_args(parser)
