@@ -18,7 +18,7 @@ parser.add('--runner', type=str, default="", help='')
 
 parser.add('--save_frequency',  type=int, default=5, help='manual seed')
 
-parser.add('--manual_seed', type=int, default=123, help='manual seed')
+parser.add('--random_seed', type=int, default=123, help='manual seed')
 parser.add('--experiments_dir', type=str, default="experiments", help='')
 parser.add('--comment', type=str, default='', help='Just any type of comment')
 

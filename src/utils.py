@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 import numpy as np
+import imgaug as ia
 
 def setup(args):
     torch.set_num_threads(1)
@@ -17,13 +18,14 @@ def setup(args):
     args.cuda = True
     torch.backends.cudnn.benchmark = True
 
-    if args.manual_seed is None:
-        args.manual_seed = random.randint(1, 10000)
+    if args.random_seed is None:
+        args.random_seed = random.randint(1, 10000)
 
-    print("Random Seed: ", args.manual_seed)
-    random.seed(args.manual_seed)
-    torch.manual_seed(args.manual_seed)
-    torch.cuda.manual_seed_all(args.manual_seed)
+    print("Random Seed: ", args.random_seed)
+    random.seed(args.random_seed)
+    torch.manual_seed(args.random_seed)
+    torch.cuda.manual_seed_all(args.random_seed)
+    ia.seed(args.random_seed)
 
 
 def get_optimizer(args, model):
