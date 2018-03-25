@@ -9,7 +9,15 @@ from glob import glob
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 """
-    Assumes the datasets are aligned and img names share prefix    
+    Template
+
+
+python scripts/preds_to_submission.py \
+--encoding extensions/superheroes/data/encoding.json \
+--preds_path extensions/superheroes/data/preds.pickle \
+--save_path p.csv
+
+
 """
 
 parser = argparse.ArgumentParser(conflict_handler='resolve')
