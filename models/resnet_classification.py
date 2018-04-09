@@ -30,7 +30,9 @@ class MultiHead(nn.Module):
 
 
 def get_net(args):
-    model = models.__dict__[args.arch](pretrained=not args.not_pretrained)
+    load_pretrained = (not args.not_pretrained) and (args.checkpoint == '')
+    
+    model = models.__dict__[args.arch](pretrained=load_pretrained)
 
     # Hack to make it work with any image size
     model.avgpool = nn.AdaptiveAvgPool2d((1, 1))
