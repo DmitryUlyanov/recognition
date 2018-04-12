@@ -27,7 +27,7 @@ def get_args(parser):
 def get_dataloader(args, part):
     train_df, val_df, test_df = get_dfs(args)
     target_columns = args.target_columns.split(',')
-    args.n_classes = [train_df[x].nunique() for x in target_columns]
+    args.n_classes = [train_df.loc[train_df[x] >= 0, x].nunique() for x in target_columns]
 
     Identity = transforms.Lambda(lambda x: x)
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
