@@ -21,11 +21,14 @@ def get_args(parser):
     parser.add('--normalize', default=False, action="store_true")
     parser.add('--augmenter', type=str, default="img_aug")
 
+    parser.add('--target_columns', type=str, default='label')
     return parser
 
 def get_dataloader(args, part):
-    train_df, val_df, test_df, target_columns, preprocessor = get_dfs(args)
-    
+    train_df, val_df, test_df = get_dfs(args)
+    target_columns = args.target_columns.split(',')
+    args.n_classes = [train_df[x].nunique() for x in target_columns]
+
     Identity = transforms.Lambda(lambda x: x)
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
@@ -169,14 +172,14 @@ def get_dfs(args):
     # Read splits info
     train_df = pd.read_csv(f"{args.splits_dir}/train.csv")
     val_df   = pd.read_csv(f"{args.splits_dir}/val.csv")
-    test_df  = pd.read_csv(f"{args.splits_dir}/test.csv")
 
-    target_columns = ['label']
-    args.n_classes = [train_df.label.nunique()]
-        
-    preprocessor = None
+    try:
+        test_df  = pd.read_csv(f"{args.splits_dir}/test.csv")
+    except Exception as e:
+        test_df = None
 
-    return train_df, val_df, test_df, target_columns, preprocessor
+
+    return train_df, val_df, test_df
 
 
 def setup_dataset(df, target_columns, input_transform, batch_size, num_workers, shuffle=True, drop_last=True):
