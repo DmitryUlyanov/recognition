@@ -27,8 +27,12 @@ def get_args(parser):
 def get_dataloader(args, part):
     train_df, val_df, test_df = get_dfs(args)
     target_columns = args.target_columns.split(',')
-    args.n_classes = [train_df.loc[train_df[x] >= 0, x].nunique() for x in target_columns]
 
+    # use max instead of nunique as some labels can be missing
+    args.n_classes = [int(train_df.loc[train_df[x] >= 0, x].max() + 1) for x in target_columns]
+
+    print([(x,y) for x,y in zip(target_columns, args.n_classes)])
+    
     Identity = transforms.Lambda(lambda x: x)
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
