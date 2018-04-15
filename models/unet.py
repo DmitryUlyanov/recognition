@@ -46,7 +46,7 @@ def get_net(args):
                  need_sigmoid        = True, 
                  need_bias           = True)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCELoss()
 
     if args.checkpoint != '':
         print("Loading pretrained net")
@@ -157,7 +157,7 @@ class unetConv2(nn.Module):
     def __init__(self, in_size, out_size, norm_layer, need_bias, pad):
         super(unetConv2, self).__init__()
 
-        print(pad)
+        # print(pad)
         if norm_layer is not None:
             self.conv1= nn.Sequential(conv(in_size, out_size, 3, bias=need_bias, pad=pad),
                                        norm(out_size, norm_layer),

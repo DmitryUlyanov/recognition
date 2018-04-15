@@ -50,7 +50,7 @@ def get_args_and_modules(parser):
     args_, _ = parser.parse_known_args()
 
     # Update main defaults
-    m_config = load_config(args_.extension)
+    m_config = load_config(args_.extension, args_.config_name)
     if m_config is not None:
         m_config.update_defaults(parser)
 
@@ -78,10 +78,10 @@ def get_args_and_modules(parser):
 
     return args, default_args, dict(runner=m_runner, dataloader=m_dataloader, model=m_model)
 
-def load_config(extension):
-    if extension != "" and os.path.exists(f'extensions/{extension}/config.py'):
-        print (f'Using config extensions/{extension}/config.py.')
-        return importlib.import_module(f'extensions.{extension}.config')
+def load_config(extension, config_name):
+    if extension != "" and os.path.exists(f'extensions/{extension}/{config_name}.py'):
+        print (f'Using config extensions/{extension}/{config_name}.py.')
+        return importlib.import_module(f'extensions.{extension}.{config_name}')
     else:
         print ('Config not found.')
         return None 

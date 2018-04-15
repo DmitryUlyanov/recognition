@@ -30,6 +30,8 @@ parser.add('--num_epochs', type=int, default=100, help='manual seed')
 
 parser.add('--patience', type=int, default=5)
 
+parser.add('--config_name', type=str, default="config")
+
 parser.add('--no-logging', default=False, action="store_true")
 parser.add('--args-to-ignore', type=str, default="")
 
