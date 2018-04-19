@@ -39,7 +39,7 @@ parser.add('--args-to-ignore', type=str, default="")
 args, default_args, m = get_args_and_modules(parser)
 
 # Setup logging and save dir
-args.save_dir = 'data' if args.no_logging else setup_logging(args, default_args, [])
+args.save_dir = 'data' if args.no_logging else setup_logging(args, default_args, args.args_to_ignore.split(','))
 os.makedirs(f'{args.save_dir}/checkpoints', exist_ok=True)
 
 # Setup everything else

@@ -22,6 +22,9 @@ def get_args(parser):
     parser.add('--augmenter', type=str, default="img_aug")
 
     parser.add('--target_columns', type=str, default='label')
+
+    parser.add('--test_csv',    type=str, default="",  help="optionally override path to test.csv")
+
     return parser
 
 def get_dataloader(args, part):
@@ -178,7 +181,11 @@ def get_dfs(args):
     val_df   = pd.read_csv(f"{args.splits_dir}/val.csv")
 
     try:
-        test_df  = pd.read_csv(f"{args.splits_dir}/test.csv")
+        if args.test_csv == "":
+            test_df  = pd.read_csv(f"{args.splits_dir}/test.csv")
+        else:
+            test_df  = pd.read_csv(args.test_csv)
+            
     except Exception as e:
         test_df = None
 
