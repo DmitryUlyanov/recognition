@@ -27,7 +27,7 @@ parser.add('--part', type=str, default='test', help='test|val|train')
 parser.add('--preds_save_path', default="", type=str)
 parser.add('--config_name', type=str, default="config")
 
-parser.add('--no_need_softmax', default=True, action='store_false')
+parser.add('--no_need_softmax', default=False, action='store_true')
 parser.add('--save_driver', default='pickle', type=str)
 
 # Gather args across modules

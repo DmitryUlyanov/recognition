@@ -32,7 +32,8 @@ def get_dataloader(args, part):
     target_columns = args.target_columns.split(',')
 
     # use max instead of nunique as some labels can be missing
-    args.n_classes = [int(train_df.loc[train_df[x] >= 0, x].max() + 1) for x in target_columns]
+    # args.n_classes = [int(train_df.loc[train_df[x] >= 0, x].max() + 1) for x in target_columns]
+    args.n_classes = [int(train_df[x].nunique()) for x in target_columns]
 
     print([(x,y) for x,y in zip(target_columns, args.n_classes)])
     
