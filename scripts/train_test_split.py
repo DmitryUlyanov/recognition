@@ -42,12 +42,16 @@ if args.classes_dir != "":
     assert len(args.classes) == 0, 'Please pass either --class <> either --classes_dir <>'
     classes = sorted(glob(f"{args.classes_dir}/*/"))
 
+    print(classes)
+else:
+    classes = args.classes
 
+    
 # Get all imgs
 
 encoding = {}
 all_imgs, all_labels = [], []
-for i, dir_path in enumerate(args.classes):
+for i, dir_path in enumerate(classes):
     imgs = [os.path.abspath(x) for x in sorted(glob(f'{dir_path}/*'))]
     labels = [i]*len(imgs)    
 

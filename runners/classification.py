@@ -12,9 +12,14 @@ import torchvision.models as models
 
 # import torch.distributions
 # from torch.distributions import beta
-from torch.autograd import Variable
 from torch.nn.functional import softmax
 from .common import AverageMeter, accuracy
+
+import typed_print as tp
+
+print = tp.init(palette='dark', # or 'dark' 
+                str_mode=tp.HIGHLIGHT_NUMBERS, 
+                highlight_word_list=['Epoch'])
 
 def get_args(parser):
   parser.add('--use_mixup',  default=False, action='store_true')
@@ -33,7 +38,7 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
 
     end = time.time()
     
-
+    torch.set_grad_enabled(True)
     for it, (names, x_, y_) in enumerate(dataloader):
         
         batch_size = x_.shape[0]  
@@ -47,20 +52,20 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
           
             lam = torch.from_numpy(np.random.beta(args.mixup_alpha + 1, args.mixup_alpha, [batch_size // 2, 1, 1, 1]).astype(np.float32)).cuda(async=True)
 
-            x_var = Variable(x1 * lam + x2 * (1 - lam))
-            y_var = Variable(y1)
+            x_var = x1 * lam + x2 * (1 - lam)
+            y_var = y1
         else: 
-            x_var = Variable(x_.cuda(async=True))
-            y_var = Variable(y_.cuda(async=True))
+            x_var = x_.cuda(async=True)
+            y_var = y_.cuda(async=True)
 
         output = model(x_var)
 
         y_var = y_var.type(torch.cuda.LongTensor)
         
         losses_ = [criterion(output[i], y_var[:, i]) for i in range(len(output))]
-        loss = sum(losses_)
+        loss = sum(losses_) / len(losses_)
 
-        losses.update(loss.data[0], x_var.shape[0])
+        losses.update(loss.item(), x_var.shape[0])
     
         optimizer.zero_grad()
         loss.backward()
@@ -94,7 +99,7 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
     avg_loss = AverageMeter()
     top1 = AverageMeter()
      
-    
+    torch.set_grad_enabled(False)
     outputs, all_names = [], []
 
     end = time.time()
@@ -103,30 +108,27 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
         # Measure data loading time
         data_time.update(time.time() - end)
 
-        x = x.cuda(async=True)
-        y = y.cuda(async=True)
+        x_var = x.cuda(async=True)
+        y_var = y.cuda(async=True)
         
-        x_var  = Variable(x, volatile=True)
-        y_var  = Variable(y, volatile=True)
-
         output = model(x_var)
 
         y_var = y_var.type(torch.cuda.LongTensor)
         losses_ = [criterion(output[i], y_var[:, i]) for i in range(len(output))]
-        loss = sum(losses_)
+        loss = sum(losses_)/len(losses_)
 
         if need_softmax:
             output = [softmax(o) for o in output]
             
         if need_preds:
-            outputs.append([o.to_numpy() for o in output])
+            outputs.append([o.cpu().numpy() for o in output])
 
 
 
-        avg_loss.update(loss.data[0], x.shape[0])
+        avg_loss.update(loss.item(), x.shape[0])
 
         top1_ = [accuracy(output[i].data, y_var[:, i].data.contiguous(), topk=(1,)) for i in range(len(output))]
-        top1.update(np.mean([o[0].cpu().numpy()[0] for o in top1_]), x.shape[0])
+        top1.update(np.mean([o[0].item() for o in top1_]), x.shape[0])
         
         # Measure elapsed time
         batch_time.update(time.time() - end)
@@ -170,7 +172,7 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
         d = {k: v for k, v in zip(all_names, p)}
         
 
-        return loss.data[0], d
+        return loss.item(), d
 
-    return loss.data[0]
+    return loss.item()
 

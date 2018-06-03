@@ -57,12 +57,12 @@ def get_net(args):
     # Hack to make it work with any image size
     model.avgpool = nn.AdaptiveAvgPool2d((1, 1))
     
-    if args.use_cond:
-        conv1_ = model.conv1
-        model.conv1 = torch.nn.Conv2d(conv1_.in_channels * 3, conv1_.out_channels, kernel_size=conv1_.kernel_size, stride=conv1_.stride, padding=conv1_.padding, bias=False)
-        model.conv1.weight.data[:, 0:3] = conv1_.weight.data/3
-        model.conv1.weight.data[:, 3:6] = conv1_.weight.data/3
-        model.conv1.weight.data[:, 6:9] = conv1_.weight.data/3
+    # if args.use_cond:
+    #     conv1_ = model.conv1
+    #     model.conv1 = torch.nn.Conv2d(conv1_.in_channels * 3, conv1_.out_channels, kernel_size=conv1_.kernel_size, stride=conv1_.stride, padding=conv1_.padding, bias=False)
+    #     model.conv1.weight.data[:, 0:3] = conv1_.weight.data/3
+    #     model.conv1.weight.data[:, 3:6] = conv1_.weight.data/3
+    #     model.conv1.weight.data[:, 6:9] = conv1_.weight.data/3
 
     # TableModule(model.modules[0], 3, 1)
 

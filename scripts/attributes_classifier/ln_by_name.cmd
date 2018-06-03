@@ -1,1 +1,0 @@
-python scripts/attributes_classifier/ln_by_name.py --img_dir /sdh/data/celebA/all_imgs --out_dir data/attribute_classifier/datasets/race/white --file_list data/attribute_classifier/datasets/race/white_list.txt
