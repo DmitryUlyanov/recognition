@@ -38,7 +38,6 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
 
     end = time.time()
     
-    torch.set_grad_enabled(True)
     for it, (names, x_, y_) in enumerate(dataloader):
         
         batch_size = x_.shape[0]  
@@ -99,7 +98,6 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
     avg_loss = AverageMeter()
     top1 = AverageMeter()
      
-    torch.set_grad_enabled(False)
     outputs, all_names = [], []
 
     end = time.time()

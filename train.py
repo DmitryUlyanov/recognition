@@ -58,9 +58,11 @@ scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args.patience, factor=0
 
 for epoch in range(0, args.num_epochs):
     model.train()
+    torch.set_grad_enabled(True)
     m['runner'].run_epoch_train(dataloader_train, model, criterion, optimizer, epoch, args)
     
     model.eval()
+    torch.set_grad_enabled(False)
     val_loss = m['runner'].run_epoch_test (dataloader_val,   model, criterion, epoch, args)
     
     scheduler.step(val_loss)

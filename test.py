@@ -47,6 +47,7 @@ dataloader = m['dataloader'].get_dataloader(args, args.part)
 model, criterion = m['model'].get_net(args)
 model.eval()
 
+torch.set_grad_enabled(False)
 loss, preds = m['runner'].run_epoch_test(dataloader, model, criterion, epoch=0, args=args, need_softmax=not args.no_need_softmax, need_preds=True)
 
 if args.preds_save_path != "":

@@ -13,3 +13,6 @@ def get_image_cv2(path):
 def get_image_pil(path):
     img = Image.open(path).convert('RGB')
     return img
+
+
+
