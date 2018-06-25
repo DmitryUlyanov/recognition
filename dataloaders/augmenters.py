@@ -62,8 +62,8 @@ class LambdaKW(Augmenter):
 def get_crop_xy(img, crop_size, random_state):
     h, w = img.shape[0], img.shape[1]
         
-    x = random_state.randint(0, w - crop_size - 1)
-    y = random_state.randint(0, h - crop_size - 1)
+    x = random_state.randint(0, w - crop_size + 1)
+    y = random_state.randint(0, h - crop_size + 1)
     
     return x, y
 
@@ -98,5 +98,28 @@ def RandomCrop(crop_size, shared_crop):
                     func_keypoints=crop_keypoints,
                     crop_size=crop_size,
                     shared_crop=shared_crop
+    )
+
+
+
+
+
+
+
+
+def resize_cv2_(images, random_state, parents, hooks, resolution, interpolation):
+    
+    return [cv2.resize(img, (resolution['width'], resolution['height']), interpolation=interpolation) for img in images]
+
+def resize_cv2_kp(keypoints_on_images, random_state, parents, hooks):
+    print('Not implemented')
+    return keypoints_on_images
+
+def ResizeCV2(resolution, interpolation):
+    return LambdaKW(
+                    func_images=resize_cv2_,
+                    func_keypoints=resize_cv2_kp,
+                    resolution=resolution,
+                    interpolation=interpolation
     )
 
