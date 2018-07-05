@@ -2,7 +2,7 @@ import argparse
 import importlib
 import os
 import torch
-
+from LSUV import LSUVinit
 from src.utils import setup, get_optimizer, get_args_and_modules
 from exp_logger import setup_logging
 
@@ -51,6 +51,12 @@ dataloader_val   = m['dataloader'].get_dataloader(args, 'val')
 
 # Load model 
 model, criterion = m['model'].get_net(args)
+
+data = iter(dataloader_train).next()
+# print(data[0])
+model = LSUVinit(model, data[1].cuda(), needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = False, cuda=True)
+
+
 
 # Load optimizer and scheduler
 optimizer = get_optimizer(args, model)

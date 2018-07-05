@@ -11,6 +11,7 @@ import numpy as np
 import torchvision.models as models
 import tqdm
 
+from dataloaders.colorspace import rgb2lab
 # import torch.distributions
 # from torch.distributions import beta
 from torch.autograd import Variable
@@ -31,7 +32,7 @@ def get_args(parser):
 
   parser.add('--niter_in_epoch', type=int, default=0)
 
-
+  parser.add('--loss_colorspace', type=str, default='rgb')
   
   return parser
 
@@ -57,7 +58,10 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
         output = model(x_var)
         
         # losses_ = []
-          
+        
+        if args.loss_colorspace == 'lab':
+            output, y_var = rgb2lab(output), rgb2lab(y_var) 
+        
         loss = criterion(output, y_var)
 
         losses.update(loss.item(), x_var.shape[0])
@@ -106,6 +110,9 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
         
         output = model(x_var)
 
+        if args.loss_colorspace == 'lab':
+            output, y_var = rgb2lab(output), rgb2lab(y_var) 
+
         # print(output.shape, x_var)
         loss = criterion(output, y_var)
         # print(y_var.max(),y_var.min())
@@ -132,13 +139,13 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
         if need_preds:
             for x, y, o, name in zip(x_var, y_var, output, names):
                 # print(img[:3].min(), img[:3].max())
-                x_name = f'out/{os.path.basename(name)}_x.jpg'
-                y_name = f'out/{os.path.basename(name)}_gt.jpg'
-                o_name = f'out/{os.path.basename(name)}_o.jpg'
+                x_name = f'{args.preds_save_path}/{os.path.basename(name)}_x.png'
+                y_name = f'{args.preds_save_path}/{os.path.basename(name)}_gt.png'
+                o_name = f'{args.preds_save_path}/{os.path.basename(name)}_o.png'
 
-                Image.fromarray((torch.clamp(x[:3].detach().cpu(), 0, 1).numpy().transpose(1, 2, 0)*255).astype(np.uint8)).save(x_name)
-                Image.fromarray((torch.clamp(y[:3].detach().cpu(), 0, 1).numpy().transpose(1, 2, 0)*255).astype(np.uint8)).save(y_name)
-                Image.fromarray((torch.clamp(o[:3].detach().cpu(), 0, 1).numpy().transpose(1, 2, 0)*255).astype(np.uint8)).save(o_name)
+                Image.fromarray((torch.clamp(x[:3].detach().cpu(), 0, 1).numpy().transpose(1, 2, 0)*255).astype(np.uint8)).save(x_name, quality=100, optimize=True, progressive=True)
+                Image.fromarray((torch.clamp(y[:3].detach().cpu(), 0, 1).numpy().transpose(1, 2, 0)*255).astype(np.uint8)).save(y_name, quality=100, optimize=True, progressive=True)
+                Image.fromarray((torch.clamp(o[:3].detach().cpu(), 0, 1).numpy().transpose(1, 2, 0)*255).astype(np.uint8)).save(o_name, quality=100, optimize=True, progressive=True)
 
         break
 
