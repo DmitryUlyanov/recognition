@@ -35,6 +35,9 @@ parser.add('--config_name', type=str, default="config")
 parser.add('--no-logging', default=False, action="store_true")
 parser.add('--args-to-ignore', type=str, default="")
 
+parser.add('--init', type=str, default="lsuv")
+parser.add('--set_eval_mode', action='store_true', default=False)
+
 # Gather args across modules
 args, default_args, m = get_args_and_modules(parser)
 
@@ -52,9 +55,10 @@ dataloader_val   = m['dataloader'].get_dataloader(args, 'val')
 # Load model 
 model, criterion = m['model'].get_net(args)
 
-data = iter(dataloader_train).next()
-# print(data[0])
-model = LSUVinit(model, data[1].cuda(), needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = False, cuda=True)
+if args.init == 'lsuv' and args.checkpoint == '':
+    data = iter(dataloader_train).next()
+    # print(data[0])
+    model = LSUVinit(model, data[1].cuda(), needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = False, cuda=True)
 
 
 
@@ -63,7 +67,10 @@ optimizer = get_optimizer(args, model)
 scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args.patience, factor=0.3, verbose=True)
 
 for epoch in range(0, args.num_epochs):
-    model.train()
+    if args.set_eval_mode:
+        model.eval()
+    else:
+        model.train()
     torch.set_grad_enabled(True)
     m['runner'].run_epoch_train(dataloader_train, model, criterion, optimizer, epoch, args)
     

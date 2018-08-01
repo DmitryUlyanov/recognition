@@ -46,10 +46,11 @@ def get_net(args):
                  need_sigmoid        = True, 
                  need_bias           = True)
 
-    criterion = nn.BCELoss()
+    criterion = nn.L1Loss()
 
     if args.checkpoint != '':
         print("Loading pretrained net")
+        print(model)
         model.load_state_dict(torch.load(args.checkpoint))
         
     return model.cuda(), criterion.cuda()

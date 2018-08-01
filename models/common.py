@@ -124,14 +124,15 @@ def conv(in_f, out_f, kernel_size, stride=1, bias=True, pad='zero', downsample_m
 
     padder = None
     to_pad = int((kernel_size - 1) / 2)
-    if pad == 'reflection':
+    if pad == 'reflection' and to_pad != 0:
         padder = nn.ReflectionPad2d(to_pad)
         to_pad = 0
   
     convolver = nn.Conv2d(in_f, out_f, kernel_size, stride, padding=to_pad, bias=bias)
 
-
+    # print (layers22)
     layers = filter(lambda x: x is not None, [padder, convolver, downsampler])
+    # print (layers)
     return nn.Sequential(*layers)
 
 
@@ -160,3 +161,8 @@ class ListModule(nn.Module):
     def __len__(self):
         return len(self._modules)
 
+
+
+def get_loss(name):
+    
+    return torch.nn['name']()

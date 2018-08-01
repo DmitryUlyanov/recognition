@@ -138,16 +138,16 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
 
         if need_preds:
             for x, y, o, name in zip(x_var, y_var, output, names):
-                # print(img[:3].min(), img[:3].max())
+                print(22)
                 x_name = f'{args.preds_save_path}/{os.path.basename(name)}_x.png'
                 y_name = f'{args.preds_save_path}/{os.path.basename(name)}_gt.png'
-                o_name = f'{args.preds_save_path}/{os.path.basename(name)}_o.png'
+                o_name = f'{args.preds_save_path}/{os.path.basename(name)}_aut.png'
 
                 Image.fromarray((torch.clamp(x[:3].detach().cpu(), 0, 1).numpy().transpose(1, 2, 0)*255).astype(np.uint8)).save(x_name, quality=100, optimize=True, progressive=True)
                 Image.fromarray((torch.clamp(y[:3].detach().cpu(), 0, 1).numpy().transpose(1, 2, 0)*255).astype(np.uint8)).save(y_name, quality=100, optimize=True, progressive=True)
                 Image.fromarray((torch.clamp(o[:3].detach().cpu(), 0, 1).numpy().transpose(1, 2, 0)*255).astype(np.uint8)).save(o_name, quality=100, optimize=True, progressive=True)
-
-        break
+		
+            break
 
     print(f' * \n'
           f' * Epoch {epoch} Testing:\t'
