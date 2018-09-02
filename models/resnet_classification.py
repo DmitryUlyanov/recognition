@@ -70,7 +70,7 @@ def get_net(args):
     criterion = nn.CrossEntropyLoss()
 
     if args.checkpoint != '':
-        print("Loading pretrained net")
+        print("Loading pretrained net!!")
         model.load_state_dict(torch.load(args.checkpoint))
         
 

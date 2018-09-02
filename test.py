@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 import importlib
 import os
@@ -7,6 +9,7 @@ import numpy as np
 # from src.training_testing import run_epoch
 from src.utils import setup, get_optimizer, get_args_and_modules
 from exp_logger import setup_logging
+from src import save_drivers
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
@@ -47,15 +50,26 @@ dataloader = m['dataloader'].get_dataloader(args, args.part)
 model, criterion = m['model'].get_net(args)
 model.eval()
 
+# import json
+
+# print('dump')
+# with open('args.json', 'w') as f:
+#     json.dump(vars(args), f, indent=4)
+
+
 torch.set_grad_enabled(False)
 loss, preds = m['runner'].run_epoch_test(dataloader, model, criterion, epoch=0, args=args, need_softmax=not args.no_need_softmax, need_preds=args.preds_save_path != '')
+
 
 if args.preds_save_path != "":
     print(f'Saving predictions to {args.preds_save_path}')
 
-    if args.save_driver == 'npz':
-        np.savez_compressed(args.preds_save_path, preds=preds)
+    if type(preds) == dict:
+        driver = getattr(save_drivers, args.save_driver)
+        driver(preds, args.preds_save_path)
     else:
-        with open(args.preds_save_path, 'wb') as f:
-            pickle.dump(preds, f, -1)
-        
+        if args.save_driver == 'npz':
+            np.savez_compressed(args.preds_save_path, preds=preds)
+        else:
+            with open(args.preds_save_path, 'wb') as f:
+                pickle.dump(preds, f, -1)

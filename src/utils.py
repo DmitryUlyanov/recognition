@@ -35,7 +35,7 @@ def get_optimizer(args, model):
       k, v = entry.split('=')
       optimizer_args[k] = eval(v)
 
-    s  = sum([np.prod(list(p.size())) for p in model.parameters()]); 
+    s  = sum([np.prod(list(p.size())) for p in model.parameters()])
     print ('Number of params: %d' % s)
 
     # Optimizer

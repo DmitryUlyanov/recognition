@@ -2,6 +2,7 @@ import argparse
 import importlib
 import os
 import torch
+import json
 from LSUV import LSUVinit
 from src.utils import setup, get_optimizer, get_args_and_modules
 from exp_logger import setup_logging
@@ -25,7 +26,7 @@ parser.add('--comment', type=str, default='', help='Just any type of comment')
 parser.add('--optimizer', type=str, default='SGD', help='Just any type of comment')
 parser.add('--optimizer_args', default="lr=1e-2^momentum=0.9", type=str, help='separated with "^" list of args i.e. "lr=1e-3^betas=(0.5,0.9)"')
 
-parser.add('--extension', type=str, default="", help='manual seed')
+parser.add('--extension', type=str, default="rawr", help='manual seed')
 parser.add('--num_epochs', type=int, default=100, help='manual seed')
 
 parser.add('--patience', type=int, default=5)
@@ -36,6 +37,7 @@ parser.add('--no-logging', default=False, action="store_true")
 parser.add('--args-to-ignore', type=str, default="")
 
 parser.add('--init', type=str, default="lsuv")
+parser.add('--lsuv_batch_size', type=int, default=-1)
 parser.add('--set_eval_mode', action='store_true', default=False)
 
 # Gather args across modules
@@ -44,6 +46,10 @@ args, default_args, m = get_args_and_modules(parser)
 # Setup logging and save dir
 args.save_dir = 'data' if args.no_logging else setup_logging(args, default_args, args.args_to_ignore.split(','))
 os.makedirs(f'{args.save_dir}/checkpoints', exist_ok=True)
+
+# Dump args
+with open(f'{args.save_dir}/args.json', 'w') as f:
+    json.dump(vars(args), f, indent=4)
 
 # Setup everything else
 setup(args)
@@ -56,9 +62,11 @@ dataloader_val   = m['dataloader'].get_dataloader(args, 'val')
 model, criterion = m['model'].get_net(args)
 
 if args.init == 'lsuv' and args.checkpoint == '':
-    data = iter(dataloader_train).next()
-    # print(data[0])
-    model = LSUVinit(model, data[1].cuda(), needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = False, cuda=True)
+    data = iter(dataloader_train).next()[1].cuda()
+
+    if args.lsuv_batch_size > 0:
+        data = data[:args.lsuv_batch_size]
+    model = LSUVinit(model, data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = False, cuda=True)
 
 
 
