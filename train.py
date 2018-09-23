@@ -24,6 +24,7 @@ if __name__ == '__main__':
     parser.add('--model', type=str, default="", help='')
     parser.add('--dataloader', type=str, default="", help='')
     parser.add('--runner', type=str, default="", help='')
+    parser.add('--criterion', type=str, default="", help='')
 
     parser.add('--save_frequency',  type=int, default=1, help='')
 
@@ -55,8 +56,6 @@ if __name__ == '__main__':
 
     # Dump args
     save_yaml(vars(args), f'{args.save_dir}/args.yaml')
-    # with open(f'{args.save_dir}/args.json', 'w') as f:
-    #     json.dump(vars(args), f, indent=4)
 
     # Setup everything else
     setup(args)
@@ -68,6 +67,8 @@ if __name__ == '__main__':
 
     # Load model 
     model, criterion = m['model'].get_net(args, dataloader_train)
+    if args.criterion != "": 
+        criterion = criterions.__dict__[args.criterion]().to(args.device)
 
     # Load optimizer and scheduler
     optimizer = get_optimizer(args, model)

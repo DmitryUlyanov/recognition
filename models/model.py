@@ -30,7 +30,7 @@ def get_abstract_net(get_net):
             if args.lsuv_batch_size > 0:
                 data = data[:args.lsuv_batch_size]
             model = LSUVinit(model, data, needed_std=1.0, std_tol=0.1,
-                             max_attempts=10, do_orthonorm=False, cuda=args.device == 'cuda')
+                             max_attempts=10, do_orthonorm=False, device=args.device)
             
         if args.checkpoint != '':
             print(f"Loading pretrained net: {args.model} from {args.checkpoint}")

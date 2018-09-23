@@ -1,2 +1,3 @@
 https://github.com/aleju/imgaug/archive/master.zip
 pyyaml
+huepy

@@ -3,8 +3,8 @@ import torch.nn as nn
 import torchvision.models as models
 import os
 from .model import get_abstract_net, get_model_args
+from .criterions import MultiHeadCriterion
 import torchvision.transforms as transforms
-from torch.nn.modules.loss import _Loss
 
 @get_model_args
 def get_args(parser):
@@ -14,6 +14,7 @@ def get_args(parser):
     parser.add('--checkpoint', type=str, default="")
     parser.add('--n_classes', type=str, default="")
 
+    parser.add('--layers_to_fix', type=str, default="")
 
     return parser
 
@@ -22,11 +23,17 @@ def get_args(parser):
 def get_net(args):
     
     load_pretrained = (args.net_init == 'pretrained') and (args.checkpoint == '')
+    if load_pretrained:
+        print('Loading a net, pretrained on ImageNet1k.')
+        
     model = models.__dict__[args.arch](pretrained=load_pretrained)
 
     # Hack to make it work with any image size
     model.avgpool = nn.AdaptiveAvgPool2d((1, 1))
     
+    for l in args.layers_to_fix.split(','):
+        model[l] = NoParam(model[l])
+
     # if args.use_cond:
     #     conv1_ = model.conv1
     #     model.conv1 = torch.nn.Conv2d(conv1_.in_channels * 3, conv1_.out_channels, kernel_size=conv1_.kernel_size, stride=conv1_.stride, padding=conv1_.padding, bias=False)
@@ -41,11 +48,12 @@ def get_net(args):
 
     return model, criterion
 
+# def get_default_criterion():
+#     return MultiHeadCriterion()
+
 def get_native_transform():
     return transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
-
-
 
 
 class MultiHead(nn.Module):
@@ -80,35 +88,3 @@ class TableModule(nn.Module):
         return y
     
 
-class MultiHeadCriterion(_Loss):
-    '''
-        For a number of "1-of-K" tasks. 
-
-    '''
-    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
-        super(MultiHeadCriterion, self).__init__(size_average, reduce, reduction)
-
-    def forward(self, input, target):
-        '''
-            let N be a number of different tasks 
-
-            `target` is a list of size N, where each element is either a vector of size `B` (then is is multi-class task)
-                or of size `B` x P_i, where P_i is the number of labels (in multi-label task e.g. tagging)
-
-            `target` is a list of size N, where each element is of size B x P_i for i = 1 ... N
-        '''
-
-        losses = []
-        for inp, tar in zip(input, target):
-            if len(tar.shape) == 1 or tar.shape[1] == 1:
-                loss = nn.CrossEntropyLoss()
-                print('CrossEntropy')
-                losses.append(loss(inp, tar))
-            elif tar.shape[1] == inp.shape[1]:
-                loss = nn.BCEWithLogitsLoss()
-
-                losses.append(loss(inp, tar))
-
-        loss = sum(losses)/len(losses)
-
-        return loss
