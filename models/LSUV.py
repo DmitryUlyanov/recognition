@@ -99,51 +99,66 @@ def apply_weights_correction(m):
             return
     return
 
-def LSUVinit(model, data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = True, cuda = False):
-    model.eval();
-    if cuda:
-        model = model.cuda()
-        data = data.cuda()
+
+def forward_model(model, data, device): 
+    if isinstance(data, tuple):
+        return model(*[x.to(device) for x in data])
     else:
-        model = model.cpu()
-        data = data.cpu() 
-    print ('Starting LSUV')
-    model.apply(count_conv_fc_layers)
-    print ('Total layers to process:', gg['total_fc_conv_layers'])
-    if do_orthonorm:
-        model.apply(orthogonal_weights_init)
-        print ('Orthonorm done')
-        if cuda:
-            model = model.cuda()
-    for layer_idx in range(gg['total_fc_conv_layers']):
-        print (layer_idx)
-        model.apply(add_current_hook)
-        out = model(data)
-        current_std = gg['act_dict'].std()
-        print ('std at layer ',layer_idx, ' = ', current_std)
-        #print  gg['act_dict'].shape
-        attempts = 0
-        while (np.abs(current_std - needed_std) > std_tol):
-            gg['current_coef'] =  needed_std / (current_std  + 1e-8);
-            gg['correction_needed'] = True
-            model.apply(apply_weights_correction)
-            if cuda:
-                model = model.cuda()
-            out = model(data)
+        return model(data.to(device))
+
+
+def LSUVinit(model, data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = True, device = 'cpu'):
+    with torch.no_grad():
+        model.eval();
+
+        model = model.to(device)
+        
+        print ('Starting LSUV')
+        model.apply(count_conv_fc_layers)
+        
+        print ('Total layers to process:', gg['total_fc_conv_layers'])
+        if do_orthonorm:
+            model.apply(orthogonal_weights_init)
+            print ('Orthonorm done')
+            model = model.to(device)
+
+        for layer_idx in range(gg['total_fc_conv_layers']):
+            print (layer_idx)
+            model.apply(add_current_hook)
+            
+            out = forward_model(model, data, device)
+
             current_std = gg['act_dict'].std()
-            print ('std at layer ',layer_idx, ' = ', current_std, 'mean = ', gg['act_dict'].mean())
-            attempts+=1
-            if attempts > max_attempts:
-                print ('Cannot converge in ', max_attempts, 'iterations')
-                break
-        if gg['hook'] is not None:
-           gg['hook'].remove()
-        gg['done_counter']+=1
-        gg['counter_to_apply_correction'] = 0
-        gg['hook_position'] = 0
-        gg['hook']  = None
-        print ('finish at layer',layer_idx)
-    print ('LSUV init done!')
-    if not cuda:
-        model = model.cpu()
-    return model
+            print ('std at layer ',layer_idx, ' = ', current_std)
+
+            attempts = 0
+            while (np.abs(current_std - needed_std) > std_tol):
+                gg['current_coef'] =  needed_std / (current_std  + 1e-8);
+                gg['correction_needed'] = True
+                model.apply(apply_weights_correction)
+                
+                model = model.to(device)
+
+                out = forward_model(model, data, device)
+
+                current_std = gg['act_dict'].std()
+                print ('std at layer ',layer_idx, ' = ', current_std, 'mean = ', gg['act_dict'].mean())
+                attempts+=1
+                if attempts > max_attempts:
+                    print ('Cannot converge in ', max_attempts, 'iterations')
+                    break
+            
+            if gg['hook'] is not None:
+               gg['hook'].remove()
+            
+            gg['done_counter']+=1
+            gg['counter_to_apply_correction'] = 0
+            gg['hook_position'] = 0
+            gg['hook']  = None
+            
+            print ('finish at layer',layer_idx)
+        
+        print ('LSUV init done!')
+        model = model.to(device)
+        
+        return model
