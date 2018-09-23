@@ -4,7 +4,7 @@ from typing import Dict
 import pandas as pd
 
 
-def npz_per_item(output: Dict[str, np.ndarray], path: str) -> None:
+def npz_per_item(data: Dict[str, np.ndarray], path: str) -> None:
     """
     Saves predictions to npz format, using one npy per sample,
     and sample names as keys

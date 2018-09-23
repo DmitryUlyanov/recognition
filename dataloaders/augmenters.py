@@ -1,8 +1,29 @@
+import cv2
+from PIL import Image
+import numpy as np
+
+import torchvision.transforms as transforms
+import imgaug as ia
+
 from imgaug import augmenters as iaa
 from imgaug.augmenters import Augmenter
-import imgaug as ia
-import cv2
 
+
+sometimes = lambda aug: iaa.Sometimes(0.4, aug)
+often = lambda aug: iaa.Sometimes(0.8, aug)
+
+
+class ImgAugTransform(object):
+    def __init__(self, augmenter_pipeline=None):
+        self.augmenter_pipeline = augmenter_pipeline
+        
+    def __call__(self, img):
+        
+        # if self.augmenter_pipeline is not None:
+        img = Image.fromarray(self.augmenter_pipeline.augment_image(np.array(img)))
+
+        return img
+        
 # -------- -----------------------------------
 # -------- GaussianBlurCV2 -------------------
 # --------------------------------------------
@@ -50,12 +71,16 @@ class LambdaKW(Augmenter):
         ia.do_assert(all([isinstance(el, ia.KeypointsOnImage) for el in result]))
         return result
 
+    def _augment_heatmaps(self, heatmaps, random_state, parents, hooks):
+        assert False
+
+
     def get_parameters(self):
         return []
 
 
 # -------------------------------------------------
-# ------------- LambdaKW --------------------------
+# ------------- Random Crop  ----------------------
 # -------------------------------------------------
 
 
@@ -101,14 +126,20 @@ def RandomCrop(crop_size, shared_crop):
     )
 
 
+# -------------------------------------------------
+# ------------- Identity  -------------------------
+# -------------------------------------------------
 
 
+Identity = transforms.Lambda(lambda x: x)
 
 
+# -------------------------------------------------
+# ------------- ResizeCV2  ------------------------
+# -------------------------------------------------
 
 
 def resize_cv2_(images, random_state, parents, hooks, resolution, interpolation):
-    
     return [cv2.resize(img, (resolution['width'], resolution['height']), interpolation=interpolation) for img in images]
 
 def resize_cv2_kp(keypoints_on_images, random_state, parents, hooks):

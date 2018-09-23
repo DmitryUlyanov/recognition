@@ -57,14 +57,14 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
             x_var = x_.cuda(async=True)
             y_var = y_.cuda(async=True)
 
+
         output = model(x_var)
 
-        y_var = y_var.type(torch.cuda.LongTensor)
+        # y_var = y_var.type(torch.cuda.LongTensor)
         
-        losses_ = [criterion(output[i], y_var[:, i]) for i in range(len(output))]
-        loss = sum(losses_) / len(losses_)
+        loss = criterion(output, y_var)
 
-        losses.update(loss.item(), x_var.shape[0])
+        losses.update(loss.item())#, x_var.shape[0])
     
         optimizer.zero_grad()
         loss.backward()
@@ -79,15 +79,11 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
                   f'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'\
                   f'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'\
                   f'Loss {losses.val:.4f} ({losses.avg:.4f})\t')
-                  #                   'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                  #                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'
-                  
+      
     
     print(f' * \n'
           f' * Epoch {epoch} Training:\t'
           f'Loss {losses.avg:.4f}\t'
-          #           'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-          #           'Prec@5 {top5.val:.3f} ({top5.avg:.3f})\n'
           f' *\t\n')
 
         
@@ -106,14 +102,12 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
         # Measure data loading time
         data_time.update(time.time() - end)
 
-        x_var = x.cuda(async=True)
-        y_var = y.cuda(async=True)
-        
+        x_var, y_var = x.cuda(async=True), y.cuda(async=True)
+            
         output = model(x_var)
 
         y_var = y_var.type(torch.cuda.LongTensor)
-        losses_ = [criterion(output[i], y_var[:, i]) for i in range(len(output))]
-        loss = sum(losses_)/len(losses_)
+        loss = loss = criterion(output, y_var)
 
         if need_softmax:
             output = [softmax(o) for o in output]
@@ -121,9 +115,7 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
         if need_preds:
             outputs.append([o.cpu().numpy() for o in output])
 
-
-
-        avg_loss.update(loss.item(), x.shape[0])
+        avg_loss.update(loss.item())#, x.shape[0])
 
         top1_ = [accuracy(output[i].data, y_var[:, i].data.contiguous(), topk=(1,)) for i in range(len(output))]
         top1.update(np.mean([o[0].item() for o in top1_]), x.shape[0])
@@ -138,7 +130,6 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
                   f'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'\
                   f'Loss {avg_loss.val:.4f} ({avg_loss.avg:.4f})\t'\
                   f'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t')
-                  #                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'
                   
         
         all_names.append(names)
@@ -147,7 +138,6 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
           f' * Epoch {epoch} Testing:\t'
           f'Loss {avg_loss.avg:.4f}\t'
           f'Prec@1 {top1.avg:.3f}\t'
-          #           'Prec@5 {top5.val:.3f} ({top5.avg:.3f})\n'
           f' *\t\n')
 
     if need_preds:

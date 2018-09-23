@@ -59,31 +59,31 @@ def get_dataloader(args, part):
             normalize if args.normalize else Identity
         ])
 
-        dataloader_train = setup_dataset(train_df, target_columns, train_transform, args.batch_size, args.num_workers)
+        dataloader_train = setup_dataset(
+                                    train_df, 
+                                    target_columns, 
+                                    train_transform, 
+                                    args.batch_size, 
+                                    args.num_workers)
         return dataloader_train
 
-    elif part == 'val':
-        val_transform = transforms.Compose([
+    elif part == 'val' or part == 'test':
+        transform = transforms.Compose([
             augmenter if args.augment_test else Identity,
             transforms.Resize([args.image_size, args.image_size]),
             transforms.ToTensor(),
             normalize if args.normalize else Identity
         ])
-
-        dataloader_val = setup_dataset(val_df, target_columns, val_transform, args.batch_size, args.num_workers, drop_last=False, shuffle=False)
-        return dataloader_val
-
-    elif part == 'test':
-        test_transform = transforms.Compose([
-            augmenter if args.augment_test else Identity,
-            transforms.Resize([args.image_size, args.image_size]),
-            transforms.ToTensor(),
-            normalize if args.normalize else Identity
-        ])
-
-        dataloader_test = setup_dataset(test_df, target_columns, test_transform, args.batch_size, args.num_workers, drop_last=False, shuffle=False)
-        return dataloader_test
-
+        df_to_use = val_df if part == 'val' else test_df
+        dataloader = setup_dataset(
+                                df_to_use, 
+                                target_columns, 
+                                transform, 
+                                args.batch_size, 
+                                args.num_workers, 
+                                drop_last=False, 
+                                shuffle=False)
+        return dataloader
 
 
 
