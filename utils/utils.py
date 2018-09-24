@@ -1,21 +1,23 @@
 import importlib
 import sys
 import random
-import os.path
+import os
 import cv2
 import time
-import torchvision.transforms as transforms
 import torch
-import torch.nn as nn
-import torchvision.models as models
+# import torch.nn as nn
 import numpy as np
 import imgaug as ia
 import yaml
 import re 
+import argparse
+from huepy import red, green
+from .io_utils import load_yaml, save_yaml
 
 def setup(args):
     torch.set_num_threads(0)
     cv2.setNumThreads(0)
+    os.environ['OMP_NUM_THREADS'] = '1'
 
     if args.random_seed is None:
         args.random_seed = random.randint(1, 10000)
@@ -86,10 +88,12 @@ def get_args_and_modules(parser, phase='train'):
     # Finally parse everything
     args, default_args = parser.parse_args(), parser.parse_args([])
 
-    args_dict = var(args)
+    args_dict = vars(args)
+    print(phase)
     if phase == 'test':
         saved_args = load_yaml(f'{args.experiment_dir}/args.yaml')
-        for k in .keys():
+        print(saved_args)
+        for k in saved_args.keys():
             if k not in args_dict:
                 print(k)
                 args_dict[k] = saved_args[k]
@@ -102,83 +106,60 @@ def get_args_and_modules(parser, phase='train'):
 def load_saved_args(experiment_dir):
     yaml_config=f'{experiment_dir}/args.yaml'
 
-    print (f'Using config {yaml_config}')
+    
+    print ((f'Using config {green(yaml_config)}'))
+    
+    return get_update_defaults_fn(yaml_config, args)
+
+    # with open(yaml_config, 'r') as stream:
+    #     config = yaml.load(stream)
+
+    # def update_defaults_fn(parser):
+
+    #     for k in config.keys():
+    #         if isinstance(config[k], str):
+    #             config[k] = re.sub('\$\{(.*?)\}', lambda x: str(vars(args)[x.groups()[0]]), config[k], flags=re.DOTALL)
+                
+    #     parser.set_defaults(**config)
+    #     return parser
+
+    # return update_defaults_fn
+
+
+def get_update_defaults_fn(yaml_config, args):
     with open(yaml_config, 'r') as stream:
         config = yaml.load(stream)
 
-    def update_defaults_fn(parser):
+    def fill_templates(config_dict):
+        for k in config_dict.keys():
+            if isinstance(config_dict[k], str):
+                config_dict[k] = re.sub('\$\{(.*?)\}', lambda x: str(vars(args).get(x.groups()[0], '${' + x.groups()[0] + '}')), config_dict[k], flags=re.DOTALL)
+            elif isinstance(config_dict[k], dict):
+                fill_templates(config_dict[k])
 
-        for k in config.keys():
-            if isinstance(config[k], str):
-                config[k] = re.sub('\$\{(.*?)\}', lambda x: str(vars(args)[x.groups()[0]]), config[k], flags=re.DOTALL)
-                
+    def update_defaults_fn(parser):
+        fill_templates(config)
+
         parser.set_defaults(**config)
         return parser
 
     return update_defaults_fn
 
 
-
 def load_config(extension, config_name, args):
-    if extension != "":
-        py_config = f'extensions/{extension}/{config_name}.py'
-        yaml_config = f'extensions/{extension}/{config_name}.yml'
+    
+    if extension == '':
+        assert False, red(f'Extension is not specified.')
 
-        if os.path.exists(py_config):
-            print (f'Using config {py_config}')
-            return importlib.import_module(f'extensions.{extension}.{config_name}').update_defaults
+    yaml_config = f'extensions/{extension}/{config_name}.yaml'
 
-        elif os.path.exists(yaml_config):
-            print (f'Using config {yaml_config}')
-            with open(yaml_config, 'r') as stream:
-                config = yaml.load(stream)
-
-            def update_defaults_fn(parser):
-
-                for k in config.keys():
-                    if isinstance(config[k], str):
-                        config[k] = re.sub('\$\{(.*?)\}', lambda x: str(vars(args)[x.groups()[0]]), config[k], flags=re.DOTALL)
-                        
-                parser.set_defaults(**config)
-                return parser
-
-            return update_defaults_fn
-        else:
-            assert False
+    if os.path.exists(yaml_config):
+        print ((f'Using config {green(yaml_config)}'))
+        return get_update_defaults_fn(yaml_config, args)
     else:
-        print ('Config not found.')
-        return None
+        assert False, red(f'Config {config_name} not found.')
 
-
-def load_config(extension, config_name, args):
-    if extension != "":
-        py_config = f'extensions/{extension}/{config_name}.py'
-        yml_config = f'extensions/{extension}/{config_name}.yml'
-
-        if os.path.exists(py_config):
-            print (f'Using config {py_config}')
-            return importlib.import_module(f'extensions.{extension}.{config_name}').update_defaults
-
-        elif os.path.exists(yml_config):
-            print (f'Using config {yml_config}')
-            with open(yml_config, 'r') as stream:
-                config = yaml.load(stream)
-
-            def update_defaults_fn(parser):
-
-                for k in config.keys():
-                    if isinstance(config[k], str):
-                        config[k] = re.sub('\$\{(.*?)\}', lambda x: str(vars(args)[x.groups()[0]]), config[k], flags=re.DOTALL)
-                        
-                parser.set_defaults(**config)
-                return parser
-
-            return update_defaults_fn
-        else:
-            assert False
-    else:
-        print ('Config not found.')
-        return None
+        
 
 
 def load_module(extension, module_type, module_name):
@@ -190,31 +171,104 @@ def load_module(extension, module_type, module_name):
     else:
         if os.path.exists(f'extensions/{extension}/{module_type}/{module_name}.py'):
             m = importlib.import_module(f'extensions.{extension}.{module_type}.{module_name}')
+            print(f"Extension module {green(module_name)} loaded.")
         else:
-            print(f'Extension module {extension}/{module_type}/{module_name} not found.')
+            # print(f'Extension module {extension}/{module_type}/{module_name} not found.')
 
             if os.path.exists(f'{module_type}/{module_name}.py'):
                 m = importlib.import_module(f'{module_type}.{module_name}')
+                print((f"Default module {green(module_name)} loaded."))
             else:
-                print(f"Default module {module_name} not found.")
-                assert False
+                assert False, red(f"Default or extension module {module_name} not found.")
 
     return m
 
 
-def fn(self):
-    return self.cpu().data.numpy()
+# def fn(self):
+#     return self.cpu().data.numpy()
 
 
-torch.autograd.Variable.to_numpy = fn
+# torch.autograd.Variable.to_numpy = fn
+
+class ActionNoYes(argparse.Action):
+    def __init__(self, 
+                 option_strings,
+                 dest,
+                 nargs=0,
+                 const=None,
+                 default=None,
+                 type=None,
+                 choices=None,
+                 required=False,
+                 help="",
+                 metavar=None):    
+
+        assert len(option_strings) == 1
+        assert option_strings[0][:2] == '--'
+        
+        name= option_strings[0][2:]
+        help += f'Use "--{name}" for True, "--no-{name}" for False'    
+        super(ActionNoYes, self).__init__(['--' + name, '--no-' + name], 
+                                          dest=dest,
+                                          nargs=nargs,
+                                          const=const,
+                                          default=default,
+                                          type=type,
+                                          choices=choices, 
+                                          required=required, 
+                                          help=help,
+                                          metavar=metavar)
+        
+    def __call__(self, parser, namespace, values, option_string=None):
+        if option_string.startswith('--no-'):
+            setattr(namespace, self.dest, False)
+        else:
+            setattr(namespace, self.dest, True)
+
+class SplitStr(argparse.Action):
+    
+    def split(self, x):
+        if x == '':
+            return []
+        else:
+            return [self.elem_type(y) for y in x.split(self.delimiter)]
+        
+    def __init__(self, 
+                 option_strings,
+                 dest,
+                 nargs=None,
+                 const=None,
+                 default=None,
+                 type=None,
+                 choices=None,
+                 required=False,
+                 help="",
+                 metavar=None,
+                 delimiter=',',
+                 elem_type=str):    
+    
+        self.delimiter = delimiter
+        self.elem_type = elem_type
+        
+        default = self.split(default)
+        super(SplitStr, self).__init__(option_strings, 
+                                          dest=dest,
+                                          nargs=nargs,
+                                          const=const,
+                                          default=default,
+                                          type=type,
+                                          choices=choices, 
+                                          required=required, 
+                                          help=help,
+                                          metavar=metavar)
+        
+    def __call__(self, parser, namespace, values, option_string=None):
+        print(values)
+        setattr(namespace, self.dest, self.split(values))
 
 
-# def load_model(args):
-#     '''
-#     Loads generator model.
-#     '''
-#     m = importlib.import_module('models.' + args.model)
-#     model, criterion = m.get_net(args)
-
-
-#     return model, criterion
+class MyArgumentParser(argparse.ArgumentParser):
+    def __init__(self, **kwargs):
+        super(MyArgumentParser, self).__init__(**kwargs)
+        self.register('action', 'store_bool', ActionNoYes)
+        self.register('action', 'split_str',  SplitStr)

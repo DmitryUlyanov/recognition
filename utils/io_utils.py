@@ -6,4 +6,4 @@ def save_yaml(what, where):
         
 def load_yaml(where):
     with open(where, 'r') as f:
-        config = yaml.load(f)
+        return yaml.load(f)

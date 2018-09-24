@@ -15,8 +15,8 @@ def get_args(parser):
     parser.add('--num_workers', type=int, default=4,   help='number of data loading workers')
     parser.add('--batch_size',  type=int, default=64,  help='batch size')
     parser.add('--image_size',  type=int, default=224, help='image size')
-    parser.add('--augment',     default=False, action="store_true")
-    parser.add('--augment_test',default=False, action="store_true")
+    parser.add('--augment',     default=True, action="store_bool")
+    parser.add('--augment_test',default=False, action="store_bool")
 
     parser.add('--normalize', default=False, action="store_true")
     parser.add('--augmenter', type=str, default="img_aug")

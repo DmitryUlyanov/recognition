@@ -2,10 +2,12 @@ import argparse
 import importlib
 import os
 import torch
+from utils.utils import MyArgumentParser
 
 if __name__ == '__main__':
     torch.multiprocessing.set_start_method("forkserver")
 
+    import models.criterions as criterions
     import json
     from utils.utils import setup, get_optimizer, get_args_and_modules
     from utils.io_utils import save_yaml
@@ -15,7 +17,7 @@ if __name__ == '__main__':
 
 
     # Define main args
-    parser = argparse.ArgumentParser(conflict_handler='resolve')
+    parser = MyArgumentParser(conflict_handler='resolve')
     parser.add = parser.add_argument
 
     parser.add('--extension',  type=str, default="")
@@ -40,22 +42,21 @@ if __name__ == '__main__':
     parser.add('--patience',         type=int, default=5)
     parser.add('--lr_reduce_factor', type=float, default=0.3)
 
-    parser.add('--no-logging', default=False, action="store_true")
+    parser.add('--logging', default=True, action="store_bool")
     parser.add('--args-to-ignore', type=str, default="splits_dir, experiments_dir")
 
-    parser.add('--set_eval_mode', action='store_true', default=False)
+    parser.add('--set_eval_mode', action='store_bool', default=False)
     parser.add('--device', type=str, default='cuda')
 
 
     # Gather args across modules
     args, default_args, m = get_args_and_modules(parser)
 
-    # Setup logging and save dir
-    args.save_dir = 'data' if args.no_logging else setup_logging(args, default_args, args.args_to_ignore.split(','))
-    os.makedirs(f'{args.save_dir}/checkpoints', exist_ok=True)
+    # Setup logging and creates save dir
+    args.experiment_dir = 'data' if not args.logging else setup_logging(args, default_args, args.args_to_ignore.split(','), exp_name_use_date=True)
 
     # Dump args
-    save_yaml(vars(args), f'{args.save_dir}/args.yaml')
+    save_yaml(vars(args), f'{args.experiment_dir}/args.yaml')
 
     # Setup everything else
     setup(args)
@@ -66,9 +67,11 @@ if __name__ == '__main__':
     dataloader_val         = m['dataloader'].get_dataloader(args, model_native_transform, 'val')
 
     # Load model 
-    model, criterion = m['model'].get_net(args, dataloader_train)
+    model = m['model'].get_net(args, dataloader_train)
+
+    # Load criterion
     if args.criterion != "": 
-        criterion = criterions.__dict__[args.criterion]().to(args.device)
+        criterion = criterions.get_loss(args.criterion).to(args.device)
 
     # Load optimizer and scheduler
     optimizer = get_optimizer(args, model)
@@ -92,6 +95,7 @@ if __name__ == '__main__':
         scheduler.step(val_loss)
 
         # Save
-        if (epoch != 0) and (epoch % args.save_frequency == 0):
-            torch.save(model.state_dict(), f'{args.save_dir}/checkpoints/model_{epoch}.pth', pickle_protocol=-1)
+        if epoch % args.save_frequency == 0:
+            torch.save(dict(state_dict=model.state_dict(), args=args),
+                       f'{args.experiment_dir}/checkpoints/model_{epoch}.pth', pickle_protocol=-1)
 

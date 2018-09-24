@@ -1,3 +1,4 @@
+https://github.com/Infinidat/munch/archive/develop.zip
 https://github.com/aleju/imgaug/archive/master.zip
 pyyaml
 huepy

@@ -154,3 +154,37 @@ def ResizeCV2(resolution, interpolation):
                     interpolation=interpolation
     )
 
+
+# -------------------------------------------------
+# ------------- PadOrCrop  ------------------------
+# -------------------------------------------------
+
+def pad_or_crop(img, target_height, target_width, border_mode=cv2.BORDER_REFLECT_101):
+    height, width = img.shape[:2]
+
+    if height < target_height:
+        h_pad_top = int((min_height - height) / 2.0)
+        h_pad_bottom = min_height - height - h_pad_top
+    else:
+        h_pad_top = 0
+        h_pad_bottom = 0
+
+    if width < target_width:
+        w_pad_left = int((min_width - width) / 2.0)
+        w_pad_right = min_width - width - w_pad_left
+    else:
+        w_pad_left = 0
+        w_pad_right = 0
+
+    img = cv2.copyMakeBorder(img, h_pad_top, h_pad_bottom, w_pad_left, w_pad_right, border_mode)
+    
+    print(img.shape)
+    img = img[:target_height, :target_width]
+    
+    assert img.shape[0] == target_height
+    assert img.shape[1] == target_width
+
+    return img
+
+
+    

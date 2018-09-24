@@ -1,3 +1,4 @@
+from huepy import cyan
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -39,3 +40,12 @@ def accuracy(output, target, topk=(1,)):
         correct_k = correct[:k].view(-1).float().sum(0)
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
+
+def print_stat(name, now_val, avg_val, num_f=3, color=cyan):
+        
+    format_str = '{:.%df}' % num_f
+
+    now_str = cyan(format_str.format(now_val))
+    avg_str = cyan(format_str.format(avg_val))
+
+    return f'{name} {now_str} ({avg_str})\t'

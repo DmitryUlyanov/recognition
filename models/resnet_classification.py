@@ -5,14 +5,14 @@ import os
 from .model import get_abstract_net, get_model_args
 from .criterions import MultiHeadCriterion
 import torchvision.transforms as transforms
+from .common import NoParam
 
 @get_model_args
 def get_args(parser):
-    parser.add('--dropout_p', default=0.5, type=float)
-    parser.add('--arch', default='resnet18', type=str)
-    # parser.add('--not_pretrained', default=False, action='store_true')
-    parser.add('--checkpoint', type=str, default="")
-    parser.add('--n_classes', type=str, default="")
+    parser.add('--dropout_p',     type=float,  default=0.5,)
+    parser.add('--arch',          type=str,    default='resnet18')
+    parser.add('--checkpoint',    type=str,    default="")
+    parser.add('--n_classes',     type=str,    default="")
 
     parser.add('--layers_to_fix', type=str, default="")
 
@@ -25,14 +25,15 @@ def get_net(args):
     load_pretrained = (args.net_init == 'pretrained') and (args.checkpoint == '')
     if load_pretrained:
         print('Loading a net, pretrained on ImageNet1k.')
-        
+
     model = models.__dict__[args.arch](pretrained=load_pretrained)
 
     # Hack to make it work with any image size
     model.avgpool = nn.AdaptiveAvgPool2d((1, 1))
     
-    for l in args.layers_to_fix.split(','):
-        model[l] = NoParam(model[l])
+    if args.layers_to_fix != '':
+        for l in args.layers_to_fix.split(','):
+            model[l] = NoParam(model[l])
 
     # if args.use_cond:
     #     conv1_ = model.conv1
@@ -44,9 +45,8 @@ def get_net(args):
     # TableModule(model.modules[0], 3, 1)
 
     model = MultiHead(model, args)
-    criterion = MultiHeadCriterion()
 
-    return model, criterion
+    return model
 
 # def get_default_criterion():
 #     return MultiHeadCriterion()

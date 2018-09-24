@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import torchvision.models as models
+# import md5
 
 # import torch.distributions
 # from torch.distributions import beta
@@ -111,7 +112,7 @@ def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
         loss_meter.update(total_loss / len(x_))#, x_var.shape[0])
 
         if it % args.print_frequency == 0:
-            print(f'{lightblue("Training")}: [{epoch}][{it}/{len(dataloader)}]\t'\
+            print(f'{lightblue("Train")}: [{epoch}][{it}/{len(dataloader)}]\t'\
                   f'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'\
                   f'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'\
                   f'Loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t')
@@ -172,13 +173,14 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
             
 
           if save_driver is not None:
-          # for h in range(len(names)):
-            for _name, _x, _y, _pred in zip(names[i], x_[i], y_[i], output):
+            for h in range(len(names)):
+              for num, (_name, _x, _y, _pred) in enumerate(zip(names[h], x_[h], y_[h], output[h])):
 
-              save_driver({
-                'target': y.detach().cpu().numpy(),
-                'pred': _pred.detach().cpu().numpy(),
-                }, path=f'{args.save_preds_path}/{_name}.npz')
+                save_driver({
+                  'target': _y.detach().cpu().numpy(),
+                  'pred':   _pred.detach().cpu().numpy(),
+                  'name':   _name,
+                  }, path=f'{args.dump_path}/{hash(_name)}.npz')
         
 
         # if need_softmax:
@@ -196,14 +198,14 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
         end = time.time()
 
         if it % args.print_frequency == 0:
-            print(f'{orange("Testing")}: [{epoch}][{it}/{len(dataloader)}]\t'\
+            print(f'{orange("Test")}: [{epoch}][{it}/{len(dataloader)}]\t'\
                   f'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'\
                   f'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'\
                   f'Loss {avg_loss.val:.4f} ({avg_loss.avg:.4f})\t')
                   # f'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t')
                   
         
-        all_names.append(names)
+        # all_names.append(names)
 
     print(f' * \n'
           f' * Epoch {epoch} {red("Testing")}:\t'
@@ -211,27 +213,6 @@ def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False
           f'Prec@1 {top1.avg:.3f}\t'
           f' *\t\n')
 
-    # if need_preds:
-    #     # Get list of names
-    #     all_names = sum(all_names, [])
 
-    #     # Rearrange the data a little
-    #     p = []
-    #     for i, pr in enumerate(outputs):
-    #         num_obj = pr[0].shape[0] # batch size
-            
-    #         for j in range(num_obj):
-    #             p.append([pr_class[j] for pr_class in pr])
-
-    #     '''
-    #     Get dict  of type
-            
-    #         name: [ preds_for_class_1, preds_for_class_2, ... ] 
-    #     '''
-    #     d = {k: v for k, v in zip(all_names, p)}
-        
-
-    #     return loss.item(), d
-
-    return loss.item()
+    return avg_loss.avg
 
