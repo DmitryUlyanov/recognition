@@ -6,6 +6,7 @@ from .model import get_abstract_net, get_model_args
 from .criterions import MultiHeadCriterion
 import torchvision.transforms as transforms
 from .common import NoParam
+from huepy import yellow 
 
 @get_model_args
 def get_args(parser):
@@ -22,9 +23,9 @@ def get_args(parser):
 @get_abstract_net
 def get_net(args):
     
-    load_pretrained = (args.net_init == 'pretrained') and (args.checkpoint == '')
+    load_pretrained = args.net_init == 'pretrained'
     if load_pretrained:
-        print('Loading a net, pretrained on ImageNet1k.')
+        print(yellow('Loading a net, pretrained on ImageNet1k.'))
 
     model = models.__dict__[args.arch](pretrained=load_pretrained)
 

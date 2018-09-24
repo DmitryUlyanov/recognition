@@ -4,6 +4,7 @@ import torch
 import math
 import os 
 import torchvision.transforms as transforms
+from huepy import yellow
 
 @get_model_args
 def get_args(parser):
@@ -15,7 +16,12 @@ def get_args(parser):
 
 @get_abstract_net
 def get_net(args):
-    model = MobileNetV2(pretrained=args.net_init == 'pretrained')
+
+    load_pretrained = args.net_init == 'pretrained'
+    if load_pretrained:
+        print(yellow('Loading a net, pretrained on ImageNet1k.'))
+
+    model = MobileNetV2(pretrained=load_pretrained)
    
     model.classifier = nn.Sequential(
             nn.Dropout(args.dropout_p),
