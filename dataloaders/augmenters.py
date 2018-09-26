@@ -130,8 +130,9 @@ def RandomCrop(crop_size, shared_crop):
 # ------------- Identity  -------------------------
 # -------------------------------------------------
 
-
-Identity = transforms.Lambda(lambda x: x)
+def identity(x):
+    return x
+Identity = transforms.Lambda(identity)
 
 
 # -------------------------------------------------

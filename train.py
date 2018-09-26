@@ -5,7 +5,7 @@ import torch
 from utils.utils import MyArgumentParser
 
 if __name__ == '__main__':
-    torch.multiprocessing.set_start_method("forkserver")
+    # torch.multiprocessing.set_start_method("forkserver")
 
     import models.criterions as criterions
     import json
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     parser.add('--lr_reduce_factor', type=float, default=0.3)
 
     parser.add('--logging', default=True, action="store_bool")
-    parser.add('--args-to-ignore', type=str, default="splits_dir, experiments_dir")
+    parser.add('--args-to-ignore', type=str, default="splits_dir,experiments_dir,extension")
 
     parser.add('--set_eval_mode', action='store_bool', default=False)
     parser.add('--device', type=str, default='cuda')
