@@ -77,6 +77,10 @@ if __name__ == '__main__':
     optimizer = get_optimizer(args, model)
     scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args.patience, factor=args.lr_reduce_factor, verbose=True)
 
+    # Dump args
+    save_yaml(vars(args), f'{args.experiment_dir}/args_modified.yaml')
+
+
     for epoch in range(0, args.num_epochs):
         if args.set_eval_mode:
             model.eval()

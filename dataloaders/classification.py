@@ -1,157 +1,112 @@
 import torch
 import numpy as np
+import random
 import pandas as pd
+import pickle
+import cv2
 from PIL import Image
 import torchvision.transforms as transforms
 
-from .common import get_image_pil
+from dataloaders.common import get_image_pil
 from torch.utils.data import DataLoader, Dataset
 
 import imgaug as ia
 from imgaug import augmenters as iaa
+from dataloaders.augmenters import Identity, sometimes, often, ImgAugTransform, ResizeCV2, GaussianBlurCV2
+
+from dataloaders.common import inin_w
 
 def get_args(parser):
-    parser.add('--splits_dir',  type=str, default="",  help="path to directory with splits")
-    parser.add('--num_workers', type=int, default=4,   help='number of data loading workers')
-    parser.add('--batch_size',  type=int, default=64,  help='batch size')
-    parser.add('--image_size',  type=int, default=224, help='image size')
-    parser.add('--augment',     default=True, action="store_bool")
-    parser.add('--augment_test',default=False, action="store_bool")
+    parser.add('--splits_dir',  type=str, default="",  help="Path to a directory with splits csv.")
+    parser.add('--num_workers', type=int, default=4,   help='Number of data loading workers.')
+    parser.add('--batch_size',  type=int, default=64,  help='Batch size')
+    parser.add('--image_size',  type=int, default=256, help='Image size')
+    parser.add('--augment_train', default=True, action="store_bool", help='Whether to augment images during training.')
+    parser.add('--augment_test',  default=False, action="store_bool", help='Whether to augment images during testing.')
 
-    parser.add('--normalize', default=False, action="store_true")
+    parser.add('--target_columns',  type=str, default="",  help="")
+    # parser.add('--crop_or_resize', type=str, help='Whether to augment images during training.')
+    
+    parser.add('--use_native_transform', default=True, action="store_bool")
     parser.add('--augmenter', type=str, default="img_aug")
-
-    parser.add('--target_columns', type=str, default='label')
-
-    parser.add('--test_csv',    type=str, default="",  help="optionally override path to test.csv")
 
     return parser
 
-def get_dataloader(args, part):
-    train_df, val_df, test_df = get_dfs(args)
+def get_dataloader(args, model_native_transform, part):
+    part_data = get_part_data(args, part)
     target_columns = args.target_columns.split(',')
 
-    # use max instead of nunique as some labels can be missing
-    args.n_classes = [int(train_df.loc[train_df[x] >= 0, x].max() + 1) for x in target_columns]
-    # args.n_classes = [int(train_df[x].nunique()) for x in target_columns]
-
-    print([(x,y) for x,y in zip(target_columns, args.n_classes)])
+    # Get how many classes are there
+    train_data = get_part_data(args, 'train')
+    merged_data = pd.concat([train_data, part_data], axis=0, ignore_index=True)
+    if args.num_classes == "":
+        args.num_classes = ','.join([str(merged_data.loc[merged_data[x] >= 0, x].max() + 1) for x in target_columns])
     
-    Identity = transforms.Lambda(lambda x: x)
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    # Define augmenter
+    augmenter = ImgAugTransform(get_seq(args, part))
+    
 
-    if args.augmenter == 'pytorch': 
-        augmenter = transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-        ])
-    elif args.augmenter == 'img_aug':
-        augmenter = ImgAug(seq)
-    else:
-        assert False
-
-    if part == 'train':   
-        train_transform = transforms.Compose([
-            augmenter if args.augment else Identity,
-            transforms.Resize([args.image_size, args.image_size]),
+    need_augment = (args.augment_test and part != 'train') or (args.augment_train and part == 'train')
+    input_transform = transforms.Compose([
+            ImgAugTransform(ResizeCV2({"height":args.image_size, "width":args.image_size}, cv2.INTER_CUBIC)),
+            augmenter if need_augment else Identity,
             transforms.ToTensor(),
-            normalize if args.normalize else Identity
-        ])
+            model_native_transform if args.use_native_transform else Identity
+    ])
 
-        dataloader_train = setup_dataset(
-                                    train_df, 
-                                    target_columns, 
-                                    train_transform, 
-                                    args.batch_size, 
-                                    args.num_workers)
-        return dataloader_train
-
-    elif part == 'val' or part == 'test':
-        transform = transforms.Compose([
-            augmenter if args.augment_test else Identity,
-            transforms.Resize([args.image_size, args.image_size]),
-            transforms.ToTensor(),
-            normalize if args.normalize else Identity
-        ])
-        df_to_use = val_df if part == 'val' else test_df
-        dataloader = setup_dataset(
-                                df_to_use, 
-                                target_columns, 
-                                transform, 
-                                args.batch_size, 
-                                args.num_workers, 
-                                drop_last=False, 
-                                shuffle=False)
-        return dataloader
-
-
+    
+    dataset = CsvDataset(part_data, target_columns, input_transform=input_transform)
+   
+    return DataLoader(
+                    dataset,
+                    batch_size=args.batch_size,
+                    num_workers=args.num_workers,
+                    pin_memory=True,
+                    drop_last=True if part == 'train' else False,
+                    shuffle=True if part == 'train' else False,
+                    worker_init_fn= inin_w)
 
 
 # -------------------------
 #         Functions
 # -------------------------
 
+def get_seq(args, part):
+    seq = iaa.Sequential([
+        iaa.Fliplr(0.5),  # horizontally flip 50% of the images
+        # often(iaa.CropAndPad(
+        #         percent=(-0.05, 0.05),
+        #         pad_mode=ia.ALL,
+        #         pad_cval=(0, 255)
+        #     )),
+        often(iaa.Affine(
+                scale={"x": (0.85, 1.15), "y": (0.85, 1.15)}, # scale images to 80-120% of their size, individually per axis
+                translate_percent={"x": (-0.15, 0.15), "y": (-0.15, 0.15)}, # translate by -20 to +20 percent (per axis)
+                rotate=(-35, 35),  # rotate by -45 to +45 degrees
+                shear=(-14, 14),  # shear by -16 to +16 degrees
+                order=[0, 1, 3], # use nearest neighbour or bilinear interpolation (fast)
+                cval=(0, 255), # if mode is constant, use a cval between 0 and 255
+                mode=ia.ALL, # use any of scikit-image's warping modes (see 2nd image from the top for examples)
+                backend='cv2'
+            )),
+    #     sometimes(iaa.Add((-10, 10))), # change brightness of images (by -10 to 10 of original value)
+    #     sometimes(iaa.AddToHueAndSaturation((-10, 8))), # change hue and saturation
+    # #         (iaa.PiecewiseAffine(scale=(0.00, 0.02), order=3)),
+    #     sometimes(iaa.ContrastNormalization((0.5, 1.5))),
+        sometimes(GaussianBlurCV2(sigma=(0, 0.5))),  # blur images with a sigma of 0 to 3.0
+    #         (iaa.ElasticTransformation(alpha=(0.0, 1.5), sigma=(9.0, 10))),
+    ])
 
-sometimes = lambda aug: iaa.Sometimes(0.4, aug)
-often = lambda aug: iaa.Sometimes(0.8, aug)
+    return seq
 
-seq = iaa.Sequential([
-    
-    iaa.Fliplr(0.5),  # horizontally flip 50% of the images
-    often(iaa.CropAndPad(
-            percent=(-0.05, 0.05),
-            pad_mode=ia.ALL,
-            pad_cval=(0, 255)
-        )),
-    often(iaa.Affine(
-            scale={"x": (0.85, 1.15), "y": (0.85, 1.15)}, # scale images to 80-120% of their size, individually per axis
-            translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}, # translate by -20 to +20 percent (per axis)
-            rotate=(-25, 25), # rotate by -45 to +45 degrees
-            shear=(-12, 12), # shear by -16 to +16 degrees
-            order=[0, 1, 3], # use nearest neighbour or bilinear interpolation (fast)
-            cval=(0, 255), # if mode is constant, use a cval between 0 and 255
-            mode=ia.ALL, # use any of scikit-image's warping modes (see 2nd image from the top for examples)
-            backend='cv2'
-        )),
-    sometimes(iaa.Add((-10, 10))), # change brightness of images (by -10 to 10 of original value)
-    sometimes(iaa.AddToHueAndSaturation((-10, 8))), # change hue and saturation
-#         (iaa.PiecewiseAffine(scale=(0.00, 0.02), order=3)),
-    sometimes(iaa.ContrastNormalization((0.5, 1.5))),
-    sometimes(iaa.GaussianBlur(sigma=(0, 0.7))),  # blur images with a sigma of 0 to 3.0
-#         (iaa.ElasticTransformation(alpha=(0.0, 1.5), sigma=(9.0, 10))),
-])
-
-
-
-class ImgAug(object):
-    def __init__(self, augmenter_pipeline=None):
-        self.augmenter_pipeline = augmenter_pipeline
-        
-    def __call__(self, img):
-        
-        if self.augmenter_pipeline is not None:
-            img = Image.fromarray(self.augmenter_pipeline.augment_image(np.array(img)))
-
-        return img
-
-
-
-class FolderWithImages(Dataset):
+class CsvDataset(Dataset):
     def __init__(self, df, target_columns, input_transform=None, target_transform=None):
-        super(FolderWithImages, self).__init__()
+        super(CsvDataset, self).__init__()
         self.df = df
         self.target_columns = target_columns
         
-        self.target_columns_mask = [x + '_mask' for x in target_columns]
-        if not all([x in df.columns for x in self.target_columns_mask]):
-            print("Masks not found.")
-            self.target_columns_mask = self.target_columns
-
         self.input_transform = input_transform
         self.target_transform = target_transform
-
-        # self.masked = False
 
     def __getitem__(self, index):
 
@@ -159,53 +114,19 @@ class FolderWithImages(Dataset):
 
         input  = get_image_pil(row['img_path'])
         target = np.array(list(row[self.target_columns].values))
-        mask   = np.array(list(row[self.target_columns_mask].values))
 
         if self.input_transform:
             input = self.input_transform(input)
 
-
         if self.target_transform:
             target = self.target_transform(target)
 
-        # print(target, mask)
         return row['img_path'], input, target
 
     def __len__(self):
         return self.df.shape[0]
 
 
-def get_dfs(args):
 
-    # Read splits info
-    train_df = pd.read_csv(f"{args.splits_dir}/train.csv")
-    val_df   = pd.read_csv(f"{args.splits_dir}/val.csv")
-
-    try:
-        if args.test_csv == "":
-            test_df  = pd.read_csv(f"{args.splits_dir}/test.csv")
-        else:
-            test_df  = pd.read_csv(args.test_csv)
-            
-    except Exception as e:
-        test_df = None
-
-
-    return train_df, val_df, test_df
-
-
-def setup_dataset(df, target_columns, input_transform, batch_size, num_workers, shuffle=True, drop_last=True):
-    dataset = FolderWithImages(
-        df, target_columns, input_transform=input_transform)
-
-    dataloader = DataLoader(dataset,
-                            batch_size=batch_size,
-                            shuffle=shuffle,
-                            num_workers=int(num_workers),
-                            pin_memory=True,
-                            drop_last=drop_last)
-    return dataloader
-
-
-
-
+def get_part_data(args, part):
+    return pd.read_csv(f"{args.splits_dir}/{part}.csv")
