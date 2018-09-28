@@ -13,7 +13,7 @@ def get_args(parser):
     parser.add('--dropout_p',     type=float,  default=0.5,)
     parser.add('--arch',          type=str,    default='resnet18')
     parser.add('--checkpoint',    type=str,    default="")
-    parser.add('--n_classes',     type=str,    default="")
+    parser.add('--num_classes',   type=str,  default="")
 
     parser.add('--layers_to_fix', type=str, default="")
 
@@ -62,7 +62,7 @@ class MultiHead(nn.Module):
         super(MultiHead, self).__init__()
         self.main = main
 
-        heads = [torch.nn.Linear(main.fc.in_features, int(x)) for x in args.n_classes.split(',')]
+        heads = [torch.nn.Linear(main.fc.in_features, int(x)) for x in args.num_classes.split(',')]
         self.main.fc = nn.Sequential(nn.Dropout(args.dropout_p))
         self.heads = torch.nn.ModuleList(heads)
 

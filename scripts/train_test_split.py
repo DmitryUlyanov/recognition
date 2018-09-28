@@ -4,13 +4,14 @@ import argparse
 import numpy as np
 import json 
 
+from huepy import red
 from glob import glob
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 """
     Assumes the datasets are aligned and img names share prefix    
 
-python scripts/attributes_classifier/train_test_split.py \
+python scripts/train_test_split.py \
 --class data/attribute_classifier/datasets/race/asian/ \
 --class data/attribute_classifier/datasets/race/black \
 --class data/attribute_classifier/datasets/race/white \
@@ -102,6 +103,9 @@ if (args.test_size == 0) and (args.test_dir != ""):
 
 
 # Save to disk
+if not os.path.exists(args.save_dir):
+    print(red(f'Creating directory {args.save_dir}'))
+    os.makedirs(args.save_dir)
 
 df_train.to_csv(f'{args.save_dir}/train.csv', index=False)
 df_val.to_csv  (f'{args.save_dir}/val.csv',   index=False)
