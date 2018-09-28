@@ -5,7 +5,6 @@ import os
 import cv2
 import time
 import torch
-# import torch.nn as nn
 import numpy as np
 import imgaug as ia
 import yaml
@@ -49,9 +48,6 @@ def get_optimizer(args, model):
 
     return optimizer
 
-# from collections import namedtuple
-# def to_namedtuple(dictionary):
-#     return namedtuple('GenericDict', dictionary.keys())(**dictionary)
 
 def get_args_and_modules(parser, phase='train'):
     '''
@@ -89,7 +85,6 @@ def get_args_and_modules(parser, phase='train'):
     args, default_args = parser.parse_args(), parser.parse_args([])
 
     args_dict = vars(args)
-    print(phase)
     if phase == 'test':
         saved_args = load_yaml(f'{args.experiment_dir}/args.yaml')
         print(saved_args)
@@ -106,24 +101,9 @@ def get_args_and_modules(parser, phase='train'):
 def load_saved_args(experiment_dir):
     yaml_config=f'{experiment_dir}/args.yaml'
 
-    
     print ((f'Using config {green(yaml_config)}'))
     
     return get_update_defaults_fn(yaml_config, args)
-
-    # with open(yaml_config, 'r') as stream:
-    #     config = yaml.load(stream)
-
-    # def update_defaults_fn(parser):
-
-    #     for k in config.keys():
-    #         if isinstance(config[k], str):
-    #             config[k] = re.sub('\$\{(.*?)\}', lambda x: str(vars(args)[x.groups()[0]]), config[k], flags=re.DOTALL)
-                
-    #     parser.set_defaults(**config)
-    #     return parser
-
-    # return update_defaults_fn
 
 
 def get_update_defaults_fn(yaml_config, args):
@@ -156,6 +136,9 @@ def load_config(extension, config_name, args):
     if os.path.exists(yaml_config):
         print ((f'Using config {green(yaml_config)}'))
         return get_update_defaults_fn(yaml_config, args)
+    elif os.path.exists(f'configs/{config_name}.yaml'):
+        print ((f'Using config {green(yaml_config)}'))
+        return get_update_defaults_fn(yaml_config, args)
     else:
         assert False, red(f'Config {config_name} not found.')
 
@@ -183,31 +166,24 @@ def load_module(extension, module_type, module_name):
 
     return m
 
-
-# def fn(self):
-#     return self.cpu().data.numpy()
-
-
-# torch.autograd.Variable.to_numpy = fn
-
 class ActionNoYes(argparse.Action):
     def __init__(self, 
-                 option_strings,
-                 dest,
-                 nargs=0,
-                 const=None,
-                 default=None,
-                 type=None,
-                 choices=None,
-                 required=False,
-                 help="",
-                 metavar=None):    
+                option_strings,
+                dest,
+                nargs=0,
+                const=None,
+                default=None,
+                type=None,
+                choices=None,
+                required=False,
+                help="",
+                metavar=None):
 
         assert len(option_strings) == 1
         assert option_strings[0][:2] == '--'
         
         name= option_strings[0][2:]
-        help += f'Use "--{name}" for True, "--no-{name}" for False'    
+        help += f'Use "--{name}" for True, "--no-{name}" for False'
         super(ActionNoYes, self).__init__(['--' + name, '--no-' + name], 
                                           dest=dest,
                                           nargs=nargs,
@@ -225,6 +201,7 @@ class ActionNoYes(argparse.Action):
         else:
             setattr(namespace, self.dest, True)
 
+
 class SplitStr(argparse.Action):
     
     def split(self, x):
@@ -232,21 +209,21 @@ class SplitStr(argparse.Action):
             return []
         else:
             return [self.elem_type(y) for y in x.split(self.delimiter)]
-        
+
     def __init__(self, 
-                 option_strings,
-                 dest,
-                 nargs=None,
-                 const=None,
-                 default=None,
-                 type=None,
-                 choices=None,
-                 required=False,
-                 help="",
-                 metavar=None,
-                 delimiter=',',
-                 elem_type=str):    
-    
+                option_strings,
+                dest,
+                nargs=None,
+                const=None,
+                default=None,
+                type=None,
+                choices=None,
+                required=False,
+                help="",
+                metavar=None,
+                delimiter=',',
+                elem_type=str):
+
         self.delimiter = delimiter
         self.elem_type = elem_type
         
