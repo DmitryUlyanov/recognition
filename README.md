@@ -24,7 +24,11 @@ extensions/my_extension/
 Classification
 --------------
 
-Here is an easy way to solve a classification problem. 
+Classification works out of the box, runner, dataloader are already implemented there. However, for clarity, you need to create an extension first.
+```bash 
+bash scripts/add_extension.sh my_classification
+```
+ Here is an easy way to solve a classification problem. 
 
 1. Prepare your dataset to have this structure: 
 ```
@@ -41,6 +45,6 @@ python scripts/train_test_split.py --classes_dir path/to/dataset --save_dir exte
 ```
 
 3. Learn something
-```
-python train.py --config_name classification
+```bash
+python train.py --extension my_classification --config_name classification 
 ```
