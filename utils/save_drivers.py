@@ -4,7 +4,7 @@ from typing import Dict
 import pandas as pd
 
 
-def npz_per_item(data: Dict[str, np.ndarray], path: str, args=None) -> None:
+def npz_per_item(data: Dict[str, np.ndarray], path: str, args: dict) -> None:
     """
     Saves predictions to npz format, using one npy per sample,
     and sample names as keys
@@ -30,8 +30,8 @@ class ImagesWithPostfixes(object):
     def __init__(self, arg):
         super(ImagesWithPostfixes, self).__init__()
         self.arg = arg
-        
-def images_with_postfixes(data: Dict[str, np.ndarray], path: str, args=None) -> None:
+
+def images_with_postfixes(data: Dict[str, np.ndarray], path: str, args) -> None:
     name = data["name"]
 
     pred   = (data['pred'][:3].transpose(1, 2, 0)   * 255).astype(np.uint8)
@@ -48,9 +48,8 @@ def images_with_postfixes(data: Dict[str, np.ndarray], path: str, args=None) -> 
     if not os.path.exists(y_name):
         save_img_pil((y[:3].transpose(1, 2, 0) * 255).astype(np.uint8), y_name)
 
-    save_img_pil((pred, o_name)
+    save_img_pil((pred, o_name))
 
-
-def pandas_msg_compressed(output: Dict[str, np.ndarray], path: str, args=None):
+def pandas_msg_compressed(output: Dict[str, np.ndarray], path: str, args) -> None:
     df = pd.DataFrame.from_dict(output, orient='index')
     df.to_msgpack(path, compress='zlib')

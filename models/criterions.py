@@ -121,6 +121,9 @@ class MultiHeadCriterion(_Loss):
 
         losses = []
         for inp, tar in zip(input, target):
+            if tar is None:
+                continue
+
             if len(tar.shape) == 1 or tar.shape[1] == 1:
                 loss = nn.CrossEntropyLoss()
                 print('CrossEntropy')
@@ -130,7 +133,7 @@ class MultiHeadCriterion(_Loss):
 
                 losses.append(loss(inp, tar))
 
-        loss = sum(losses)/len(losses)
+        loss = sum(losses) / len(losses)
 
         return loss
 

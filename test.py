@@ -9,6 +9,7 @@ from utils.utils import setup, get_args_and_modules, MyArgumentParser
 from exp_logger import setup_logging, print_experiment_info
 from utils import save_drivers
 from utils import io_utils
+from models import criterions
 
 # Define main args
 parser = MyArgumentParser(conflict_handler='resolve')
@@ -49,10 +50,10 @@ model_native_transform = m['model'].get_native_transform()
 dataloader = m['dataloader'].get_dataloader(args, model_native_transform, args.part)
 
 # Load model 
-model, criterion = m['model'].get_net(args, dataloader)
+model = m['model'].get_net(args, dataloader)
 model.eval()
 
-
+criterion = criterions.get_loss(args.criterion).to(args.device)
 save_driver = getattr(save_drivers, args.save_driver)
 
 torch.set_grad_enabled(False)

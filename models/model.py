@@ -46,7 +46,13 @@ def get_abstract_net(get_net):
                 assert False
 
             print(f"Loading {red(args.model)} from checkpoint {red(checkpoint_path)}")
-            model.load_state_dict(torch.load(checkpoint_path))
+            
+            state_dict = torch.load(checkpoint_path)
+            if isinstance(state_dict, dict): 
+                state_dict = state_dict['state_dict']
+            
+            model.load_state_dict(state_dict)
+ 
 
         return model
 

@@ -16,6 +16,7 @@ from .io_utils import load_yaml, save_yaml
 def setup(args):
     torch.set_num_threads(0)
     cv2.setNumThreads(0)
+    cv2.ocl.setUseOpenCL(False)
     os.environ['OMP_NUM_THREADS'] = '1'
 
     if args.random_seed is None:
@@ -56,7 +57,7 @@ def get_args_and_modules(parser, phase='train'):
     args_, _ = parser.parse_known_args()
 
     # Update main defaults
-    update_defaults_fn = load_saved_args(args_.experiment_dir) if phase == 'test' else load_config(args_.extension, args_.config_name, args_)
+    update_defaults_fn = load_saved_args(args_.experiment_dir, args_) if phase == 'test' else load_config(args_.extension, args_.config_name, args_)
     if update_defaults_fn is not None:
         update_defaults_fn(parser)
 
@@ -76,7 +77,7 @@ def get_args_and_modules(parser, phase='train'):
     m_runner = load_module(args_.extension, 'runners', args_.runner)
     m_runner.get_args(parser)
 
-    update_defaults_fn = load_saved_args(args_.experiment_dir) if phase == 'test' else load_config(args_.extension, args_.config_name, args_)
+    update_defaults_fn = load_saved_args(args_.experiment_dir, args_) if phase == 'test' else load_config(args_.extension, args_.config_name, args_)
     if update_defaults_fn is not None:
         update_defaults_fn(parser)
 
@@ -98,11 +99,11 @@ def get_args_and_modules(parser, phase='train'):
     return args, default_args, dict(runner=m_runner, dataloader=m_dataloader, model=m_model)
 
 
-def load_saved_args(experiment_dir):
+def load_saved_args(experiment_dir, args):
     yaml_config=f'{experiment_dir}/args.yaml'
 
     print ((f'Using config {green(yaml_config)}'))
-    
+
     return get_update_defaults_fn(yaml_config, args)
 
 
