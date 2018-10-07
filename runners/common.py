@@ -25,21 +25,26 @@ def adjust_learning_rate(optimizer, epoch):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
+def accuracy(output, target):
+    return accuracy_(output, target, topk=(1,))[0]
 
-def accuracy(output, target, topk=(1,)):
+def accuracy_(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
-    maxk = max(topk)
-    batch_size = target.size(0)
 
-    _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t()
-    correct = pred.eq(target.view(1, -1).expand_as(pred))
+    res = [list() for i in range(len(topk))]
+    for o, t in zip(output, target):
+        maxk = max(topk)
+        batch_size = t.size(0)
 
-    res = []
-    for k in topk:
-        correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-        res.append(correct_k.mul_(100.0 / batch_size))
-    return res
+        _, pred = o.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(t.view(1, -1).expand_as(pred))
+
+        for i, k in enumerate(topk):
+            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+            res[i].append(correct_k.mul_(100.0 / batch_size).item())
+
+    return res 
 
 def print_stat(name, now_val, avg_val, num_f=3, color=cyan):
         

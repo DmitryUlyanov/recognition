@@ -100,32 +100,56 @@ def get_seq(args, part):
     return seq
 
 class CsvDataset(Dataset):
-    def __init__(self, df, target_columns, input_transform=None, target_transform=None):
+    def __init__(self, df, target_columns, input_transform=None):
         super(CsvDataset, self).__init__()
         self.df = df
         self.target_columns = target_columns
         
         self.input_transform = input_transform
-        self.target_transform = target_transform
+        # self.target_transform = target_transform
 
     def __getitem__(self, index):
 
         row = self.df.loc[index]
 
         input  = get_image_pil(row['img_path'])
-        target = np.array(list(row[self.target_columns].values))
+        target = list(row[self.target_columns].values)
 
         if self.input_transform:
             input = self.input_transform(input)
 
-        if self.target_transform:
-            target = self.target_transform(target)
+        # if self.target_transform:
+        #     target = self.target_transform(target)
 
-        return row['img_path'], input, target
+        return (row['img_path'], input, *target)
 
     def __len__(self):
         return self.df.shape[0]
 
+# from torch.utils.data.dataloader import default_collate
+# def my_collate(batch):
+
+#     d_idxs = [x[-1] for x in batch]
+#     d_idx_max = max(d_idxs) 
+
+
+#     per_d = [np.where(np.array(d_idxs) == i)[0] for i in range(d_idx_max + 1)]
+#     # print(per_d)
+#     out = []
+#     for i in range(len(batch[0])):
+        
+#         out.append ( [ default_collate([batch[j][i] for j in idxs]) if len(idxs) > 0  else None for idxs in per_d ] )
+    
+#     # [if bat]
+#     # print(len(batch), len(batch[0]))
+
+#     # ff = [([x[i] for x in batch if x[i] is not None]) for i in range(len(batch[0]))]
+
+#     # print (batch[0])
+#     # print (len(ff[0]))
+#     # for i in range(len(batch[0])):
+#     #     print(len([x[i] for x in batch if x[i] is not None]))
+#     return out[0], out[1], out[2]
 
 
 def get_part_data(args, part):

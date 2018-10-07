@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(conflict_handler='resolve')
 parser.add = parser.add_argument
 
 parser.add('--exp_dir', type=str, default="", help='')
-
+parser.add('--no-dry-run', action='store_true')
 
 # Gather args across modules
 args = parser.parse_args()
@@ -26,4 +26,8 @@ for exp_path in glob.glob(f'{args.exp_dir}/*'):
 
     if len(checkpoints) != 0:
         print(exp_path)
+
+        if args.no_dry_run:
+            shutil.rmtree(exp_path)
+            
 # Setup logging and save dir

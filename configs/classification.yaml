@@ -1,0 +1,21 @@
+model: resnet_classification
+dataloader: classification
+runner: classification
+
+experiments_dir: "extensions/${extension}/data/experiments"
+splits_dir: "extensions/${extension}/data/splits"
+
+
+optimizer: "SGD"
+optimizer_args: "lr=3e-3^momentum=0.9"
+
+# Dataloader args
+image_size: 128
+target_columns: label
+criterion: 'CrossEntropyLoss'
+
+# Model args
+arch: 'resnet18'
+net_init: 'pretrained'
+
+use_all_gpus: false

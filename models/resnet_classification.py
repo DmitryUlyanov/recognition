@@ -2,17 +2,18 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 import os
-from .model import get_abstract_net, get_model_args
-from .criterions import MultiHeadCriterion
+from models.model import get_abstract_net, get_model_args
+from models.criterions import MultiHeadCriterion
 import torchvision.transforms as transforms
-from .common import NoParam
+from models.common import NoParam, MultiHead
 from huepy import yellow 
 
+# finetune with lr = 3e-3
 @get_model_args
 def get_args(parser):
     parser.add('--dropout_p',     type=float,  default=0.5,)
     parser.add('--arch',          type=str,    default='resnet18')
-    parser.add('--checkpoint',    type=str,    default="")
+    # parser.add('--checkpoint',    type=str,    default="")
     parser.add('--num_classes',   type=str,  default="")
 
     parser.add('--layers_to_fix', type=str, default="")
@@ -57,21 +58,6 @@ def get_native_transform():
                                  std=[0.229, 0.224, 0.225])
 
 
-class MultiHead(nn.Module):
-    def __init__(self, main, args):
-        super(MultiHead, self).__init__()
-        self.main = main
-
-        heads = [torch.nn.Linear(main.fc.in_features, int(x)) for x in args.num_classes.split(',')]
-        self.main.fc = nn.Sequential(nn.Dropout(args.dropout_p))
-        self.heads = torch.nn.ModuleList(heads)
-
-    def __len__(self):
-        return len(self._modules)
-
-    def forward(self, input):
-        input = self.main(input)
-        return [head(input) for head in self.heads]
 
 
 class TableModule(nn.Module):

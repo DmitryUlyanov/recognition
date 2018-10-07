@@ -28,10 +28,11 @@ parser.add('--experiment_dir', type=str, default="", help='manual seed')
 # parser.add('--experiments_dir', type=str, default="experiments", help='')
 parser.add('--part', type=str, default='val', help='test|val|train')
 
-parser.add('--preds_save_path', default="", type=str)
+
 # parser.add('--config_name', type=str, default="config")
 
 parser.add('--need_softmax', default=False, action='store_bool')
+
 parser.add('--save_driver', default=None, type=str)
 parser.add('--dump_path', default=None, type=str)
 

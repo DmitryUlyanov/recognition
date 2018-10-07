@@ -126,7 +126,6 @@ class MultiHeadCriterion(_Loss):
 
             if len(tar.shape) == 1 or tar.shape[1] == 1:
                 loss = nn.CrossEntropyLoss()
-                print('CrossEntropy')
                 losses.append(loss(inp, tar))
             elif tar.shape[1] == inp.shape[1]:
                 loss = nn.BCEWithLogitsLoss()

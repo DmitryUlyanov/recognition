@@ -2,6 +2,23 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+class MultiHead(nn.Module):
+    def __init__(self, main, args):
+        super(MultiHead, self).__init__()
+        self.main = main
+
+        heads = [torch.nn.Linear(main.fc.in_features, int(x)) for x in args.num_classes.split(',')]
+        self.main.fc = nn.Sequential(nn.Dropout(args.dropout_p))
+        self.heads = torch.nn.ModuleList(heads)
+
+    def __len__(self):
+        return len(self._modules)
+
+    def forward(self, input):
+        input = self.main(input)
+        return [head(input) for head in self.heads]
+
+
 class NoParam(nn.Module):
     def __init__(self, model):
         super(NoParam, self).__init__()
