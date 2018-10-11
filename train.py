@@ -3,6 +3,7 @@ import importlib
 import os
 import torch
 from utils.utils import MyArgumentParser
+from tensorboardX import SummaryWriter
 
 if __name__ == '__main__':
     # torch.multiprocessing.set_start_method("forkserver")
@@ -49,6 +50,10 @@ if __name__ == '__main__':
     parser.add('--device', type=str, default='cuda')
 
 
+    parser.add('--save_driver', default=None, type=str)
+    parser.add('--dump_path', default=None, type=str)
+
+
     # Gather args across modules
     args, default_args, m = get_args_and_modules(parser)
 
@@ -81,6 +86,10 @@ if __name__ == '__main__':
     save_yaml(vars(args), f'{args.experiment_dir}/args_modified.yaml')
 
 
+    writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='_train')
+    m['runner'].run_epoch.writer = writer
+
+
     for epoch in range(0, args.num_epochs):
         if args.set_eval_mode:
             model.eval()
@@ -89,14 +98,14 @@ if __name__ == '__main__':
 
         # Train
         torch.set_grad_enabled(True)
-        m['runner'].run_epoch_train(dataloader_train, model, criterion, optimizer, epoch, args)
+        m['runner'].run_epoch(dataloader_train, model, criterion, optimizer, epoch, args, part='train')
         
         # Validate
         model.eval()
         torch.set_grad_enabled(False)
-        val_loss = m['runner'].run_epoch_test (dataloader_val,   model, criterion, epoch, args)
+        val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, args, part='val')
         
-        scheduler.step(val_loss)
+        # scheduler.step(val_loss)
 
         # Save
         if epoch % args.save_frequency == 0:

@@ -10,6 +10,7 @@ from exp_logger import setup_logging, print_experiment_info
 from utils import save_drivers
 from utils import io_utils
 from models import criterions
+from tensorboardX import SummaryWriter
 
 # Define main args
 parser = MyArgumentParser(conflict_handler='resolve')
@@ -55,7 +56,16 @@ model = m['model'].get_net(args, dataloader)
 model.eval()
 
 criterion = criterions.get_loss(args.criterion).to(args.device)
-save_driver = getattr(save_drivers, args.save_driver)
+
+if args.save_driver is not None:
+    save_driver = getattr(save_drivers, args.save_driver)
+else:
+    save_driver = None
+
+
+writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='test')
+
+m['runner'].run_epoch_test.writer = writer
 
 torch.set_grad_enabled(False)
 loss = m['runner'].run_epoch_test(

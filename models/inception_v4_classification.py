@@ -10,21 +10,34 @@ import torchvision.transforms as transforms
 from models.common import NoParam, MultiHead
 from huepy import yellow 
 
-# finetune with lr = 5e-2
+# finetune with lr = 9e-3
 
 @get_model_args
 def get_args(parser):
     parser.add('--dropout_p',     type=float,  default=0.5,)
-    # parser.add('--arch',          type=str,    default='resnet18')
-    # parser.add('--checkpoint',    type=str,    default="")
-    parser.add('--num_classes',   type=str,  default="")
-
-    parser.add('--layers_to_fix', type=str, default="")
+    parser.add('--num_classes',   type=str,    default="")
+    parser.add('--layers_to_fix', type=str,    default="")
 
     return parser
 
 
-# __all__ = ['InceptionV4', 'inceptionv4']
+@get_abstract_net
+def get_net(args):
+    
+    load_pretrained = args.net_init == 'pretrained'
+    if load_pretrained:
+        print(yellow('Loading a net, pretrained on ImageNet1k.'))
+
+    model = InceptionV4(num_classes=1001, pretrained=load_pretrained)
+    model = MultiHead(model, args)
+
+    return model
+
+def get_native_transform():
+    return transforms.Normalize(mean=[0.5, 0.5, 0.5],
+                                 std=[0.5, 0.5, 0.5])
+
+
 
 pretrained_settings = {
     'inceptionv4': {
@@ -327,64 +340,3 @@ class InceptionV4(nn.Module):
         x = self.fc(x)
         return x
 
-@get_abstract_net
-def get_net(args):
-    
-    load_pretrained = args.net_init == 'pretrained'
-    if load_pretrained:
-        print(yellow('Loading a net, pretrained on ImageNet1k.'))
-
-    model = InceptionV4(num_classes=1001, pretrained=load_pretrained)
-    model = MultiHead(model, args)
-
-    return model
-
-def get_native_transform():
-    return transforms.Normalize(mean=[0.5, 0.5, 0.5],
-                                 std=[0.5, 0.5, 0.5])
-
-
-# def inceptionv4(num_classes=1000, pretrained='imagenet'):
-#     if pretrained:
-#         settings = pretrained_settings['inceptionv4'][pretrained]
-#         assert num_classes == settings['num_classes'], \
-#             "num_classes should be {}, but is {}".format(settings['num_classes'], num_classes)
-
-#         # both 'imagenet'&'imagenet+background' are loaded from same parameters
-#         model = InceptionV4(num_classes=1001)
-        
-#         if pretrained == 'imagenet':
-#             new_last_linear = nn.Linear(1536, 1000)
-#             new_last_linear.weight.data = model.last_linear.weight.data[1:]
-#             new_last_linear.bias.data = model.last_linear.bias.data[1:]
-#             model.last_linear = new_last_linear
-
-#         model.input_space = settings['input_space']
-#         model.input_size = settings['input_size']
-#         model.input_range = settings['input_range']
-#         model.mean = settings['mean']
-#         model.std = settings['std']
-#     else:
-#         model = InceptionV4(num_classes=num_classes)
-#     return model
-
-
-'''
-TEST
-Run this code with:
-```
-cd $HOME/pretrained-models.pytorch
-python -m pretrainedmodels.inceptionv4
-```
-'''
-if __name__ == '__main__':
-
-    assert inceptionv4(num_classes=10, pretrained=None)
-    print('success')
-    assert inceptionv4(num_classes=1000, pretrained='imagenet')
-    print('success')
-    assert inceptionv4(num_classes=1001, pretrained='imagenet+background')
-    print('success')
-
-    # fail
-    assert inceptionv4(num_classes=1001, pretrained='imagenet')

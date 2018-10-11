@@ -3,13 +3,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from models.common import conv, norm, ListModule
+from models.model import get_abstract_net, get_model_args
+from dataloaders.augmenters import Identity
 
+@get_model_args
 def get_args(parser):
-    # parser.add('--dropout_p', default=0.5, type=float)
-    # parser.add('--arch', default='resnet18', type=str)
-    # parser.add('--not_pretrained', default=False, action='store_true')
-    parser.add('--checkpoint', type=str, default="")
-
     parser.add('--num_input_channels', type=int, default=3)
     parser.add('--num_output_channels', type=int, default=3)
 
@@ -27,6 +25,7 @@ def get_args(parser):
 
     return parser
 
+@get_abstract_net
 def get_net(args):
     # load_pretrained = (not args.not_pretrained) and (args.checkpoint == '')
     
@@ -46,15 +45,10 @@ def get_net(args):
                  need_sigmoid        = True, 
                  need_bias           = True)
 
-    criterion = nn.L1Loss()
+    return model
 
-    if args.checkpoint != '':
-        print("Loading pretrained net")
-        print(model)
-        model.load_state_dict(torch.load(args.checkpoint))
-        
-    return model.cuda(), criterion.cuda()
-
+def get_native_transform():
+    return Identity
 
 class UNet(nn.Module):
     '''
