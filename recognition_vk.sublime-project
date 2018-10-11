@@ -1,0 +1,27 @@
+{
+	"folders":
+	[
+		{
+			"path": ".",
+			"folder_exclude_patterns": ["*/data", "__pycache__", "out", ".git", ".ipynb_checkpoints"],	
+		        "follow_symlinks": true,
+                        "file_exclude_patterns": ["*.pyc", ".gitmodules"],
+			"binary_file_patterns":
+			    [
+				"*.dds",
+				"*.eot",
+				"*.gif",
+				"*.ico",
+				"*.jar",
+				"*.jpeg",
+				"*.jpg",
+				"*.pdf",
+				"*.png",
+				"*.swf",
+				"*.tga",
+				"*.ttf",
+				"*.zip",
+			    ],
+		}
+	]
+}
