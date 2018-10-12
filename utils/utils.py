@@ -40,12 +40,14 @@ def get_optimizer(args, model):
         k, v = entry.split('=')
         optimizer_args[k] = eval(v)
 
-    s = sum([np.prod(list(p.size())) for p in model.parameters()])
+    params_to_optimize = [p for p in model.parameters() if p.requires_grad]
+    
+    s = sum([np.prod(list(p.size())) for p in params_to_optimize])
     print ('Number of params: %d' % s)
 
     # Optimizer
     optimizer = torch.optim.__dict__[args.optimizer](
-        model.parameters(), **optimizer_args)
+        params_to_optimize, **optimizer_args)
 
     return optimizer
 

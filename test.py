@@ -65,14 +65,13 @@ else:
 
 writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='test')
 
-m['runner'].run_epoch_test.writer = writer
+m['runner'].run_epoch.writer = writer
 
 torch.set_grad_enabled(False)
-loss = m['runner'].run_epoch_test(
-                                    dataloader, 
-                                    model, 
-                                    criterion,
-                                    epoch=0, 
-                                    args=args, 
-                                    need_softmax=args.need_softmax, 
-                                    save_driver=save_driver)
+loss = m['runner'].run_epoch(
+                            dataloader, 
+                            model,
+                            criterion,
+                            None,
+                            epoch=0, 
+                            args=args,part='test'           )

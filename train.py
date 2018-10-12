@@ -58,7 +58,7 @@ if __name__ == '__main__':
     args, default_args, m = get_args_and_modules(parser)
 
     # Setup logging and creates save dir
-    args.experiment_dir = 'data' if not args.logging else setup_logging(args, default_args, args.args_to_ignore.split(','), exp_name_use_date=True)
+    args.experiment_dir = '/tmp/recognition' if not args.logging else setup_logging(args, default_args, args.args_to_ignore.split(','), exp_name_use_date=True)
 
     # Dump args
     save_yaml(vars(args), f'{args.experiment_dir}/args.yaml')
@@ -103,9 +103,9 @@ if __name__ == '__main__':
         # Validate
         model.eval()
         torch.set_grad_enabled(False)
-        val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, args, part='val')
+        val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, args, part='test')
         
-        # scheduler.step(val_loss)
+        scheduler.step(val_loss)
 
         # Save
         if epoch % args.save_frequency == 0:
