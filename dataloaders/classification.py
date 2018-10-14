@@ -100,11 +100,12 @@ def get_seq(args, part):
     return seq
 
 class CsvDataset(Dataset):
-    def __init__(self, df, target_columns, input_transform=None):
+    def __init__(self, df, target_columns, input_transform=None, treat_as_all_multiclass=True):
         super(CsvDataset, self).__init__()
         self.df = df
         self.target_columns = target_columns
         
+        self.treat_as_all_multiclass = treat_as_all_multiclass
         self.input_transform = input_transform
         # self.target_transform = target_transform
 
@@ -113,7 +114,10 @@ class CsvDataset(Dataset):
         row = self.df.loc[index]
 
         input  = get_image_pil(row['img_path'])
+
         target = list(row[self.target_columns].values)
+        if not self.treat_as_all_multiclass:
+            target = [np.array(target)]
 
         if self.input_transform:
             input = self.input_transform(input)

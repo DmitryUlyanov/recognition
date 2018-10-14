@@ -5,7 +5,7 @@ import time
 import torch
 import tqdm
 import torchvision.utils as vutils
-from runners.common import AverageMeter, print_stat
+from runners.common import AverageMeter, print_stat, get_grid
 from PIL import Image
 from huepy import lightblue, cyan
 
@@ -21,10 +21,6 @@ def get_args(parser):
 
 def save_img_pil(img_np, save_path):
     Image.fromarray(img_np).save(save_path, quality=100, optimize=True, progressive=True)
-
-
-def resize(imgs, sz=256):
-    return torch.nn.functional.interpolate(imgs, size=sz)
 
 last_it = dict(train=0, val=0, test=0)
 
@@ -63,7 +59,7 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
 
         # Logging
         loss_meter.update(loss.item(), x.shape[0])
-        writer.add_scalar(f'Loss', loss_meter.val,  last_it[part])
+        writer.add_scalar(f'Loss {part}', loss_meter.val,  last_it[part])
         last_it[part] += 1
         if it % args.log_frequency_loss == 0:
             print(f'{lightblue(part.capitalize())}: [{cyan(epoch)}][{cyan(it)}/{cyan(len(dataloader) if args.niter_in_epoch <= 0 else args.niter_in_epoch)}]\t'\
@@ -85,14 +81,6 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
 
     return loss_meter.avg
 
-
-
-def get_grid(x, y, output):
-    num_img = min(x.shape[0], 4)
-    imgs = resize(torch.cat([x[:num_img].detach().cpu(), y[:num_img].detach().cpu(), output[num_img].detach().cpu()]))
-    x = vutils.make_grid(imgs, nrow = num_img)
-    
-    return x
 
 
 

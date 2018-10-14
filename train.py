@@ -44,7 +44,7 @@ if __name__ == '__main__':
     parser.add('--lr_reduce_factor', type=float, default=0.3)
 
     parser.add('--logging', default=True, action="store_bool")
-    parser.add('--args-to-ignore', type=str, default="splits_dir,experiments_dir,extension")
+    parser.add('--args-to-ignore', type=str, default="checkpoint,splits_dir,experiments_dir,extension")
 
     parser.add('--set_eval_mode', action='store_bool', default=False)
     parser.add('--device', type=str, default='cuda')
@@ -53,13 +53,21 @@ if __name__ == '__main__':
     parser.add('--save_driver', default=None, type=str)
     parser.add('--dump_path', default=None, type=str)
 
+    parser.add('--set_eval_mode_epoch', default=-1, type=int)
+
 
     # Gather args across modules
     args, default_args, m = get_args_and_modules(parser)
 
     # Setup logging and creates save dir
-    args.experiment_dir = '/tmp/recognition' if not args.logging else setup_logging(args, default_args, args.args_to_ignore.split(','), exp_name_use_date=True)
-
+    if args.logging:
+        args.experiment_dir, writer = setup_logging(args, 
+                                                    default_args, 
+                                                    args.args_to_ignore.split(','), 
+                                                    exp_name_use_date=True)
+    else:
+        args.experiment_dir = '/tmp/recognition'
+        writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='_train')
     # Dump args
     save_yaml(vars(args), f'{args.experiment_dir}/args.yaml')
 
@@ -86,12 +94,11 @@ if __name__ == '__main__':
     save_yaml(vars(args), f'{args.experiment_dir}/args_modified.yaml')
 
 
-    writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='_train')
     m['runner'].run_epoch.writer = writer
 
 
     for epoch in range(0, args.num_epochs):
-        if args.set_eval_mode:
+        if args.set_eval_mode or (args.set_eval_mode_epoch >= 0 and epoch>=args.set_eval_mode_epoch):
             model.eval()
         else:
             model.train()
@@ -103,7 +110,7 @@ if __name__ == '__main__':
         # Validate
         model.eval()
         torch.set_grad_enabled(False)
-        val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, args, part='test')
+        val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, args, part='val')
         
         scheduler.step(val_loss)
 

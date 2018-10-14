@@ -7,29 +7,17 @@ print = tp.init(palette='dark', # or 'dark'
                 # highlight_word_list=['Training'])
 
 def get_args(parser):
-  parser.add('--num_batches',  default=1, type=int)
-  parser.add('--dump_save_dir',  default='dumper', type=str)
-  return parser
+    parser.add('--num_batches',  default=1, type=int)
+    parser.add('--dump_save_dir',  default='dumper', type=str)
+    return parser
 
 
-def run_epoch_train(dataloader, model, criterion, optimizer, epoch, args):
-  for it, data in enumerate(dataloader):
-    if it >= args.num_batches:
-      break
+def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'):
+    for it, data in enumerate(dataloader):
+        if it >= args.num_batches:
+          break
 
-    print('Dumping train', it)
-    torch.save(data, f'{args.dump_save_dir}/data_train_{it}.pth')
-    
-        
-def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False, need_preds=False):
-  for it, data in enumerate(dataloader):
-    
-    if it >= args.num_batches:
-      break
-    
-    print('Dumping test', it)
-    torch.save(data, f'{args.dump_save_dir}/data_test_{it}.pth')
-    
+    print(f'Dumping {part}', it)
+    torch.save(data, f'{args.dump_save_dir}/data_{part}_{it}.pth')
 
-  return -1
-
+    return 0

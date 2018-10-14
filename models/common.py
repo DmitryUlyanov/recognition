@@ -2,12 +2,19 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+def set_param_grad(model, value, set_eval_mode=True):
+    for param in model.parameters():
+        param.requires_grad = value
+    
+    if set_eval:
+        model.eval()
+
 class MultiHead(nn.Module):
-    def __init__(self, main, args):
+    def __init__(self, main, args, in_features=None):
         super(MultiHead, self).__init__()
         self.main = main
 
-        heads = [torch.nn.Linear(main.fc.in_features, int(x)) for x in args.num_classes.split(',')]
+        heads = [torch.nn.Linear(main.fc.in_features if in_features is None else in_features, int(x)) for x in args.num_classes.split(',')]
         self.main.fc = nn.Sequential(nn.Dropout(args.dropout_p))
         self.heads = torch.nn.ModuleList(heads)
 

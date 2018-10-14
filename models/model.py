@@ -57,3 +57,8 @@ def get_abstract_net(get_net):
         return model
 
     return wrapper
+
+
+def save_model(model, args):
+    torch.save(dict(state_dict=model.state_dict(), args=args),
+               f'{args.experiment_dir}/checkpoints/model_{epoch}.pth', pickle_protocol=-1)

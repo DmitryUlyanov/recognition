@@ -3,7 +3,8 @@ import importlib
 import os
 import torch
 import shutil
-from huepy import red
+from huepy import red, green 
+
 # Define main args
 parser = argparse.ArgumentParser(conflict_handler='resolve')
 parser.add = parser.add_argument
@@ -13,7 +14,7 @@ parser.add('--no-dry-run', action='store_true')
 
 args = parser.parse_args()
 
-import glob 
+import glob
 
 for exp_path in glob.glob(f'{args.exp_dir}/*'):
 
@@ -24,3 +25,5 @@ for exp_path in glob.glob(f'{args.exp_dir}/*'):
 
         if args.no_dry_run:
             shutil.rmtree(exp_path)
+    else:
+       print('Leaving ', green(exp_path))

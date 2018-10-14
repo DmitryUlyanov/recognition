@@ -11,6 +11,8 @@ def get_args(parser):
     parser.add('--dropout_p',   default=0.2, type=float)
     parser.add('--num_outputs', default=11,  type=int)
 
+    parser.add('--return_features', action='store_true')
+
     return parser
 
 
@@ -21,7 +23,7 @@ def get_net(args):
     if load_pretrained:
         print(yellow('Loading a net, pretrained on ImageNet1k.'))
 
-    model = MobileNetV2(pretrained=load_pretrained)
+    model = MobileNetV2(pretrained=load_pretrained, return_features=args.return_features)
    
     model.classifier = nn.Sequential(
             nn.Dropout(args.dropout_p),
@@ -93,7 +95,7 @@ class InvertedResidual(nn.Module):
 
 
 class MobileNetV2(nn.Module):
-    def __init__(self, n_class=1000, input_size=256, width_mult=1., pretrained=False):
+    def __init__(self, n_class=1000, input_size=256, width_mult=1., pretrained=False, return_features=False):
         super(MobileNetV2, self).__init__()
         block = InvertedResidual
         input_channel = 32
@@ -108,6 +110,8 @@ class MobileNetV2(nn.Module):
             [6, 160, 3, 2],
             [6, 320, 1, 1],
         ]
+
+        self.return_features = return_features
 
         # building first layer
         assert input_size % 32 == 0
@@ -142,9 +146,15 @@ class MobileNetV2(nn.Module):
             self._initialize_weights()
 
     def forward(self, x):
-        x = self.features(x)
-        x = x.mean(3).mean(2)
+
+
+        feats = self.features(x)
+        x = feats.mean(3).mean(2)
         x = self.classifier(x)
+        
+        if self.return_features:
+            return x, feats
+
         return x
 
     def _initialize_weights(self):

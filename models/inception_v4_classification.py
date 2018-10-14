@@ -17,6 +17,7 @@ def get_args(parser):
     parser.add('--dropout_p',     type=float,  default=0.5,)
     parser.add('--num_classes',   type=str,    default="")
     parser.add('--layers_to_fix', type=str,    default="")
+    parser.add('--fix_features',  action='store_true')
 
     return parser
 
@@ -29,6 +30,9 @@ def get_net(args):
         print(yellow('Loading a net, pretrained on ImageNet1k.'))
 
     model = InceptionV4(num_classes=1001, pretrained=load_pretrained)
+
+    set_param_grad(model.main, args.fix_features == False, set_eval_mode = False)
+
     model = MultiHead(model, args)
 
     return model
