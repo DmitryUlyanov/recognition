@@ -1,6 +1,7 @@
 import torch
 from models.LSUV import LSUVinit
 from huepy import red, yellow
+from models.common import set_param_grad
 import os 
 
 def get_model_args(get_args):
@@ -9,6 +10,7 @@ def get_model_args(get_args):
         parser.add('--net_init', type=str, default="", help='pretrained|lsuv|default')
         parser.add('--lsuv_batch_size', type=int, default=-1)
         parser.add('--use_all_gpus', default=False, action='store_bool')
+        parser.add('--fix_feature_extractor', default=False, action='store_bool')
 
         return get_args(parser)
 
@@ -21,10 +23,6 @@ def get_abstract_net(get_net):
         model = get_net(args)
         model = model.to(args.device)
 
-
-        if args.use_all_gpus and args.device == 'cuda':
-            print(yellow('Using all GPU\'s!'))
-            model = torch.nn.DataParallel(model)
 
         if args.net_init == 'lsuv' and args.checkpoint == '':
             data = iter(dataloader_train).next()[1].to(args.device)
@@ -52,13 +50,52 @@ def get_abstract_net(get_net):
                 state_dict = state_dict['state_dict']
             
             model.load_state_dict(state_dict)
- 
+        
+        
+        if hasattr(model, 'feature_extractor'):
+            value = not args.fix_feature_extractor
+            set_param_grad(model.feature_extractor, value = value, set_eval_mode = False)
+
+
+        if args.use_all_gpus and args.device == 'cuda':
+            print(yellow('Using all GPU\'s!'))
+            model = torch.nn.DataParallel(model) 
 
         return model
 
     return wrapper
 
 
-def save_model(model, args):
-    torch.save(dict(state_dict=model.state_dict(), args=args),
-               f'{args.experiment_dir}/checkpoints/model_{epoch}.pth', pickle_protocol=-1)
+def save_model(model, epoch, args):
+    
+    model_to_save = model
+    if isinstance(model, torch.nn.DataParallel):
+        model_to_save = model.module
+
+    dict_to_save = { 
+        'state_dict': model_to_save.state_dict(), 
+        'args': args
+    }
+    save_path = f'{args.experiment_dir}/checkpoints/model_{epoch}.pth'
+
+    torch.save(dict_to_save, save_path, pickle_protocol=-1)
+
+
+class BaseModel(torch.nn.Module):
+    def __init__(self, feature_extractor, predictor):
+        super(BaseModel, self).__init__()
+        
+        self.feature_extractor = feature_extractor
+        self.predictor = predictor
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+
+    def forward(input):
+        x = self.feature_extractor(input)
+        
+        x = self.pool(x)
+        x = x.view(x.size(0), -1)
+        
+        x = self.predictor(x)
+
+        return x
+        

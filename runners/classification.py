@@ -62,7 +62,6 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
 
         # For multitarget tasks we want to get acc per target
         acc_per_target = accuracy(output, y)
-        # print(acc_per_target)
         acc_meter.update(np.mean([x for x in acc_per_target if x != -1]))
 
         # Logging 
@@ -75,9 +74,8 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
             # writer.add_scalars(f'metrics/{part}/accs_per_target', {str(k): acc_per_target[k] for k in range(len(acc_per_target))}, last_it[part])
             data['last_it'] += 1
 
-
         if it % args.print_frequency == 0:
-            print(f'{lightblue("Train")}: [{epoch}][{it}/{len(dataloader)}]\t'\
+            print(f'{lightblue(part.capitalize())}: [{epoch}][{it}/{len(dataloader)}]\t'\
                   f'{print_stat("Time", batch_time.val, batch_time.avg)}\t'\
                   f'{print_stat("Data", data_time.val, data_time.avg)}\t'\
                   f'{print_stat("Loss", loss_meter.val, loss_meter.avg, 4)}\t',

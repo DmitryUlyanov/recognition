@@ -21,44 +21,64 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def adjust_learning_rate(optimizer, epoch):
-    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = args.lr * (0.1 ** (epoch // 30))
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-
 def accuracy(output, target):
-    return accuracy_(output, target, topk=(1,))[0]
+    return list(top1(output, target))
 
-def accuracy_(output, target, topk=(1,)):
+
+def top1(output, target):
+    for o, t in zip(output, target):
+        yield top1_(o, t)
+
+
+def top1_(output, target):
+    mask = (target != -100)
+    mask_sum = mask.sum().item()
+    if mask_sum == 0:
+        return -1
+
+    _, pred = torch.max(output, 1)
+
+    num_correct = (pred[mask] == target[mask]).sum().item()
+    score = num_correct * 100.0 / mask_sum 
+
+    return score
+
+
+
+def topk(output, target, k_list=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
 
-    res = [list() for i in range(len(topk))]
+    res = [list() for i in range(len(k_list))]
     for o, t in zip(output, target):
-        mask = (t != -100)
-        mask_sum = mask.sum().item()
-        if mask_sum == 0:
-            for i, k in enumerate(topk):
-                res[i].append(-1)
-
-            continue
-
-        maxk = max(topk)
-        batch_size = t.size(0)
-
-        _, pred = o.topk(maxk, 1, True, True)
-        pred = pred.t()
-
-        # print(pred.shape, t.shape)
-        t = t.view(1, -1).expand_as(pred)
-        mask = mask.view(1, -1).expand_as(pred)
-        correct = pred[mask].eq(t[mask])
-
-        for i, k in enumerate(topk):
-            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-            res[i].append(correct_k.mul_(100.0 / mask_sum).item())
+        for i, score in enumerate(topk_(o, t, k_list)):
+            res[i].append(score)
 
     return res 
+
+
+
+def topk_(output, target, k_list):
+    mask = (target != -100)
+    mask_sum = mask.sum().item()
+    if mask_sum == 0:
+        for i, k in enumerate(k_list):
+            yield -1
+
+
+    maxk = max(k_list)
+    batch_size = t.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+
+    t = target.view(1, -1).expand_as(pred)
+    mask = mask.view(1, -1).expand_as(pred)
+    correct = pred[mask].eq(t[mask])
+
+    for i, k in enumerate(k_list):
+        correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+        yield correct_k.mul_(100.0 / mask_sum).item()
+
 
 def print_stat(name, now_val, avg_val, num_f=3, color=cyan):
         

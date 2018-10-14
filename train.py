@@ -4,6 +4,8 @@ import os
 import torch
 from utils.utils import MyArgumentParser
 from tensorboardX import SummaryWriter
+from models.model import save_model
+from huepy import yellow 
 
 if __name__ == '__main__':
     # torch.multiprocessing.set_start_method("forkserver")
@@ -99,6 +101,7 @@ if __name__ == '__main__':
 
     for epoch in range(0, args.num_epochs):
         if args.set_eval_mode or (args.set_eval_mode_epoch >= 0 and epoch>=args.set_eval_mode_epoch):
+            print(f'Setting {yellow(eval)} mode!')
             model.eval()
         else:
             model.train()
@@ -115,7 +118,6 @@ if __name__ == '__main__':
         scheduler.step(val_loss)
 
         # Save
+
         if epoch % args.save_frequency == 0:
-            torch.save(dict(state_dict=model.state_dict(), args=args),
-                            f'{args.experiment_dir}/checkpoints/model_{epoch}.pth', pickle_protocol=-1)
- 
+            save_model(model, epoch, args)

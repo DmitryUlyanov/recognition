@@ -16,8 +16,6 @@ from huepy import yellow
 def get_args(parser):
     parser.add('--dropout_p',     type=float,  default=0.5,)
     parser.add('--num_classes',   type=str,    default="")
-    parser.add('--layers_to_fix', type=str,    default="")
-    parser.add('--fix_features',  action='store_true')
 
     return parser
 
@@ -31,15 +29,37 @@ def get_net(args):
 
     model = InceptionV4(num_classes=1001, pretrained=load_pretrained)
 
-    set_param_grad(model.main, args.fix_features == False, set_eval_mode = False)
+    num_classes = [int(x) for x in args.num_classes.split(',')]
 
-    model = MultiHead(model, args)
+    predictor = MultiHead(in_features = 1536, num_classes=num_classes)
+    if args.dropout_p > 0:
+        predictor = nn.Sequential( nn.Dropout(args.dropout_p), predictor)
+    
+    model.predictor =  predictor
 
     return model
+
 
 def get_native_transform():
     return transforms.Normalize(mean=[0.5, 0.5, 0.5],
                                  std=[0.5, 0.5, 0.5])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -328,19 +348,20 @@ class InceptionV4(nn.Module):
             url = 'http://data.lip6.fr/cadene/pretrainedmodels/inceptionv4-8e4777a0.pth'
             self.load_state_dict(model_zoo.load_url(url))
 
-        # self.last_linear = None
-        self.fc = self.last_linear
+        self.predictor = self.last_linear
+        self.feature_extractor = self.features
+
+        self.last_linear = None 
+        self.features = None
 
     def logits(self, features):
         
         return x
 
     def forward(self, input):
-        x = self.features(input)
-
-
+        x = self.feature_extractor(input)
         x = self.avg_pool(x)
         x = x.view(x.size(0), -1)
-        x = self.fc(x)
+        x = self.predictor(x)
         return x
 
