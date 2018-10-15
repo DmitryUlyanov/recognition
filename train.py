@@ -101,7 +101,7 @@ if __name__ == '__main__':
 
     for epoch in range(0, args.num_epochs):
         if args.set_eval_mode or (args.set_eval_mode_epoch >= 0 and epoch>=args.set_eval_mode_epoch):
-            print(f'Setting {yellow(eval)} mode!')
+            print(f'Setting {yellow('eval')} mode!')
             model.eval()
         else:
             model.train()
