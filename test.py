@@ -51,9 +51,31 @@ print_experiment_info(args, default_args, args.experiment_dir)
 model_native_transform = m['model'].get_native_transform()
 dataloader = m['dataloader'].get_dataloader(args, model_native_transform, args.part)
 
-# Load model 
-model = m['model'].get_net(args, dataloader)
-model.eval()
+# # Load model 
+# model = m['model'].get_net(args, dataloader)
+# model.eval()
+
+# criterion = criterions.get_loss(args.criterion).to(args.device)
+
+# if args.save_driver is not None:
+#     save_driver = getattr(save_drivers, args.save_driver)
+# else:
+#     save_driver = None
+
+
+# writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='test')
+
+# m['runner'].run_epoch.writer = writer
+
+# torch.set_grad_enabled(False)
+# loss = m['runner'].run_epoch(
+#                             dataloader, 
+#                             model,
+#                             criterion,
+#                             None,
+#                             epoch=0, 
+                            # args=args,part='test'           )
+# 
 
 criterion = criterions.get_loss(args.criterion).to(args.device)
 
@@ -62,16 +84,26 @@ if args.save_driver is not None:
 else:
     save_driver = None
 
-
 writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='test')
 
-m['runner'].run_epoch.writer = writer
+for i in range(13):
+    args.checkpoint = f'model_{i}.pth'
 
-torch.set_grad_enabled(False)
-loss = m['runner'].run_epoch(
-                            dataloader, 
-                            model,
-                            criterion,
-                            None,
-                            epoch=0, 
-                            args=args,part='test'           )
+    # Load model 
+    model = m['model'].get_net(args, dataloader)
+    model.eval()
+
+
+
+    
+
+    m['runner'].run_epoch.writer = writer
+
+    torch.set_grad_enabled(False)
+    loss = m['runner'].run_epoch(
+                                dataloader, 
+                                model,
+                                criterion,
+                                None,
+                                epoch=0, 
+                                args=args,part='test'           )

@@ -13,14 +13,14 @@ def get_args(parser):
 
     parser.add('--feature_scale', type=int, default=4)
     parser.add('--more_layers', type=int, default=0)
-    parser.add('--concat_x', default=False, action='store_true')
+    parser.add('--concat_x', default=False, action='store_bool')
 
     parser.add('--upsample_mode', type=str, default="deconv")
     parser.add('--pad', type=str, default="zero")
 
     parser.add('--norm_layer', type=str, default="in")
     
-    # parser.add('--need_sigmoid', default=False, action='store_true')
+    parser.add('--last_act', default='sigmoid',  type=str)
     # parser.add('--need_bias',    default=T, action='store_true')
 
     return parser
@@ -42,7 +42,7 @@ def get_net(args):
                  upsample_mode       = args.upsample_mode, 
                  pad                 = args.pad, 
                  norm_layer          = args.norm_layer, 
-                 need_sigmoid        = True, 
+                 last_act            = args.last_act, 
                  need_bias           = True)
 
     return model
@@ -57,7 +57,7 @@ class UNet(nn.Module):
     '''
     def __init__(self, num_input_channels=3, num_output_channels=3, 
                        feature_scale=4, more_layers=0, concat_x=False,
-                       upsample_mode='deconv', pad='zero', norm_layer='in', need_sigmoid=False, need_bias=True):
+                       upsample_mode='deconv', pad='zero', norm_layer='in', last_act='sigmoid', need_bias=True):
         super(UNet, self).__init__()
 
         self.feature_scale = feature_scale
@@ -91,8 +91,12 @@ class UNet(nn.Module):
 
         self.final = conv(filters[0], num_output_channels, 1, bias=need_bias, pad=pad)
 
-        if need_sigmoid: 
+        if last_act == 'sigmoid': 
             self.final = nn.Sequential(self.final, nn.Sigmoid())
+        elif last_act == 'tanh':
+            self.final = nn.Sequential(self.final, nn.Tanh())
+
+
 
     def forward(self, inputs):
 
