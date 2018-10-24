@@ -19,7 +19,7 @@ extensions/my_extension/
     - Each file in `models` dir should implement `get_args`, `get_net`, `get_native_transform` functions.
     - ...
 
-    Use `classification.py` dataloader/runner as example and `resnet_classification.py` as an exaple of a model.
+    Use `classification.py` dataloader/runner as an example and `resnet_classification.py` as an example of a model.
 
 Classification
 --------------

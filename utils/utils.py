@@ -144,7 +144,7 @@ def load_config(extension, config_name, args):
         return get_update_defaults_fn(yaml_config, args)
     elif os.path.exists(f'configs/{config_name}.yaml'):
         print ((f'Using config {green(yaml_config)}'))
-        return get_update_defaults_fn(yaml_config, args)
+        return get_update_defaults_fn(f'configs/{config_name}.yaml', args)
     else:
         assert False, red(f'Config {config_name} not found.')
 

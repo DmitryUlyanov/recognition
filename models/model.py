@@ -89,9 +89,9 @@ class BaseModel(torch.nn.Module):
         
         self.feature_extractor = feature_extractor
         self.predictor = predictor
-        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.pool = torch.nn.AdaptiveAvgPool2d((1, 1))
 
-    def forward(input):
+    def forward(self, input):
         x = self.feature_extractor(input)
         
         x = self.pool(x)
