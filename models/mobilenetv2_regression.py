@@ -155,7 +155,7 @@ class MobileNetV2(nn.Module):
         if self.return_features:
             return x, feats
 
-        return x
+        return [x]
 
     def _initialize_weights(self):
         for m in self.modules():

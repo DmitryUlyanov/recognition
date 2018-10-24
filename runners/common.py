@@ -100,9 +100,16 @@ def print_stat(name, now_val, avg_val, num_f=3, color=cyan):
 def resize(imgs, sz=256):
     return torch.nn.functional.interpolate(imgs, size=sz)
 
-def get_grid(x, y, output):
-    num_img = min(x.shape[0], 4)
-    imgs = resize(torch.cat([x[:num_img].detach().cpu(), y[:num_img].detach().cpu(), output[:num_img].detach().cpu()]))
+
+def get_grid(*args, sz = 256):
+    num_img = min(args[0].shape[0], 4)
+
+    grid = []
+    for a in args:
+        b = a[:num_img].detach().cpu()
+        grid.append(b)
+
+    imgs = resize(torch.cat(grid), sz=sz)
     x = torchvision.utils.make_grid(imgs, nrow = num_img)
     
     return x

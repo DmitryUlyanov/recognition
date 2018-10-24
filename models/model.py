@@ -1,6 +1,8 @@
 import torch
 from models.LSUV import LSUVinit
 from huepy import red, yellow
+from utils.utils import load_module
+from munch import munchify
 from models.common import set_param_grad
 import os 
 
@@ -99,3 +101,27 @@ class BaseModel(torch.nn.Module):
 
         return x
         
+
+
+def load_model_from_checkpoint(checkpoint_path, args_to_update=None):
+
+        args = vars(torch.load(checkpoint_path)['args'])
+
+        args['checkpoint'] = checkpoint_path
+        args['net_init'] = 'checkpoint'
+        args['use_all_gpus'] = False
+
+        if checkpoint_path == 'extensions/rawr/data/lrnet/experiments/10-12,13:20;config_name:lrnet/checkpoints/model_50.pth':
+            args['predictor_config']['return_features'] = False
+            args['processor_config']['num_maps_input'] = 3
+            args['processor_config']['filter_size'] = 3
+            args['processor_config']['model'] += '_'
+
+        if args_to_update is not None:
+            args.update(args_to_update)
+
+        m_model = load_module(args['extension'], 'models', args['model'])
+
+        model = m_model.get_net(munchify(args), None)
+
+        return model, args

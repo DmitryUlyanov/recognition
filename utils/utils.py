@@ -13,6 +13,9 @@ import argparse
 from huepy import red, green
 from .io_utils import load_yaml, save_yaml
 
+FILE_PATH = os.path.abspath(os.path.dirname(__file__))
+RECOGNITION_PATH = os.path.abspath(FILE_PATH + '/..')
+
 def setup(args):
     torch.set_num_threads(0)
     cv2.setNumThreads(0)
@@ -152,6 +155,9 @@ def load_module(extension, module_type, module_name):
     '''
         module_type : models | dataloaders 
     '''
+    cdir = os.getcwd()
+    os.chdir(RECOGNITION_PATH)
+
     if extension == '':
         m = importlib.import_module(f'{module_type}.{module_name}')
     else:
@@ -166,6 +172,8 @@ def load_module(extension, module_type, module_name):
                 print((f"Default module {green(module_name)} loaded."))
             else:
                 assert False, red(f"Default or extension module {module_name} not found.")
+
+    os.chdir(cdir)
 
     return m
 

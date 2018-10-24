@@ -65,7 +65,7 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
         loss_meter.update(loss.item(), y.shape[0])
 
         if part == 'train':
-          writer.add_scalar(f'Loss {part}', loss.item(),  last_it[part])
+          writer.add_scalar(f'Metrics/loss/{part}', loss.item(),  last_it[part])
           last_it[part] += 1
 
         if it % args.log_frequency_loss == 0:
@@ -76,7 +76,8 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
                     
 
         if it % args.log_frequency_images == 0:
-            writer.add_image(f'{part}_{epoch}', get_grid(x_[0], y_, output),  it)
+            writer.add_image(f'Samples/{part}', get_grid(x_[0], y_, output),  epoch if part != 'train' else last_it[part])
+
               
         if args.niter_in_epoch > 0 and it % args.niter_in_epoch == 0 and it > 0:
             break 
@@ -99,7 +100,7 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
           f' *\t\n')
 
     if part != 'train':
-      writer.add_scalar(f'Loss {part}', loss_meter.avg,  epoch)
+      writer.add_scalar(f'Metrics/loss/{part}', loss_meter.avg,  epoch)
 
     return loss_meter.avg
 
