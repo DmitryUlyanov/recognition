@@ -111,7 +111,7 @@ if __name__ == '__main__':
         m['runner'].run_epoch(dataloader_train, model, criterion, optimizer, epoch, args, part='train')
         
         # Validate
-        model.eval()
+        # model.eval()
         torch.set_grad_enabled(False)
         val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, args, part='val')
         

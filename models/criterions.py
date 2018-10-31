@@ -7,6 +7,8 @@ from torch import nn
 import torch.nn.functional as fnn
 from torch.nn.modules.loss import _Loss
 import sys 
+import torch.nn.functional as F
+# from .loss import dice_loss
 
 def get_loss(name, **kwargs):
     if name in sys.modules[__name__].__dict__:
@@ -137,3 +139,123 @@ class MultiHeadCriterion(_Loss):
         return loss
 
 
+
+
+
+
+
+
+
+
+from models.lovasz_losses import lovasz_hinge, lovasz_loss_ignore_empty
+
+def symmetric_lovasz(outputs, targets):
+    return (lovasz_hinge(outputs, targets) + lovasz_hinge(-outputs, 1 - targets)) / 2
+
+
+def symmetric_lovasz_ignore_empty(outputs, targets, truth_image):
+    return (lovasz_loss_ignore_empty(outputs, targets, truth_image) +
+            lovasz_loss_ignore_empty(-outputs, 1 - targets, truth_image)) / 2
+
+
+class DeepSupervisedCriterion(_Loss):
+    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
+        super(DeepSupervisedCriterion, self).__init__(size_average, reduce, reduction)
+
+        self.is_average = True 
+
+    def forward(self, input, targets):
+
+        pred_pixel_lvl, preds_middle, pred_image_lvl = input 
+
+        total_loss = 0
+        for ti in range(targets.shape[1]):
+            target = targets[:, ti, ...]
+            target_image_lvl = (target.sum(dim=(1, 2)) > 0).float()
+
+            loss_image = fnn.binary_cross_entropy_with_logits(pred_image_lvl, target_image_lvl, reduce=self.is_average)
+            loss_pixel = 0
+            for pred_m in preds_middle:
+                loss_pixel += symmetric_lovasz_ignore_empty(pred_m.squeeze(1), target, target_image_lvl)
+                # loss_pixel += fnn.binary_cross_entropy_with_logits(pred_m.squeeze(1), target)
+
+            # loss = fnn.binary_cross_entropy_with_logits(pred_pixel_lvl.squeeze(1), target)    
+            loss = symmetric_lovasz(pred_pixel_lvl.squeeze(1), target)
+
+            total_loss += 0.05 * loss_image + 0.1 * loss_pixel + 1 * loss
+
+        return total_loss
+
+
+
+class DeepSupervisedBCECriterion(_Loss):
+    '''
+        image level loss + pixel level loss + additional supervision 
+    '''
+    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
+        super(DeepSupervisedBCECriterion, self).__init__(size_average, reduce, reduction)
+
+        self.is_average = True 
+
+    def forward(self, input, targets):
+
+        pred_pixel_lvl, preds_middle, pred_image_lvl = input 
+        target_pixel_lvl, target_image_lvl = targets 
+
+        # print(target_image_lvl, target_pixel_lvl.max(), target_pixel_lvl.mean())
+        # print(pred_image_lvl.shape, target_image_lvl.shape)
+        loss_image_lvl = fnn.binary_cross_entropy_with_logits(pred_image_lvl, target_image_lvl)
+        
+        loss_middle = 0 
+
+        m = target_image_lvl > 0
+        if m.sum().item() > 0:
+            for pred_m in preds_middle:
+                loss_middle += 0.4 * fnn.binary_cross_entropy_with_logits(pred_m[m], target_pixel_lvl[m]) + dice_loss(torch.sigmoid(pred_m[m]), target_pixel_lvl[m])
+
+
+        pixel_lvl_loss = 0.4 * fnn.binary_cross_entropy_with_logits(pred_pixel_lvl, target_pixel_lvl) + dice_loss(torch.sigmoid(pred_pixel_lvl), target_pixel_lvl)
+            
+        total_loss = 0.05 * loss_image_lvl + 1 * pixel_lvl_loss + 0.1 * loss_middle
+
+        # print(total_loss)
+        return total_loss
+
+eps = 1e-3
+def dice_loss(preds, trues, weight=None, is_average=False):
+    preds = preds.contiguous()
+    trues = trues.contiguous()
+    num = preds.size(0)
+    preds = preds.view(num, -1)
+    trues = trues.view(num, -1)
+    if weight is not None:
+        w = torch.autograd.Variable(weight).view(num, -1)
+        preds = preds * w
+        trues = trues * w
+    intersection = (preds * trues).sum(1)
+    scores = 1 - (2. * intersection + eps) / (preds.sum(1) + trues.sum(1) + eps)
+
+    # if is_average:
+    #     score = scores.sum()/num
+    #     return torch.clamp(score, 0., 1.)
+    # else:
+    return scores.mean()
+        
+# def calculate_loss_multichannel(self, output, target, meter, training, iter_size):
+#         bce = F.binary_cross_entropy_with_logits(output, target)
+#         output = F.sigmoid(output)
+#         dice = dice_loss(output, target)
+#         dice_ch2 = dice_loss(output[:,-1,...], target[:,-1,...])
+#         dice_r = dice_round(output[:,-1,...], target[:,-1,...])
+
+#         loss = (self.config.loss['bce'] * bce + self.config.loss['dice'] * (1 - dice)) / iter_size
+
+#         return loss
+#         # if training:
+#         #     loss.backward()
+
+#         # meter['loss'] += loss.data.cpu().numpy()[0]
+#         # meter['dice'] += dice_ch2.data.cpu().numpy()[0] / iter_size
+#         # meter['bce'] += bce.data.cpu().numpy()[0] / iter_size
+#         # meter['dr'] += dice_r.data.cpu().numpy()[0] / iter_size
+#         return meter

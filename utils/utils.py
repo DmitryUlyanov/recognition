@@ -12,6 +12,10 @@ import re
 import argparse
 from huepy import red, green
 from .io_utils import load_yaml, save_yaml
+import utils.optimizers
+
+
+
 
 FILE_PATH = os.path.abspath(os.path.dirname(__file__))
 RECOGNITION_PATH = os.path.abspath(FILE_PATH + '/..')
@@ -46,12 +50,10 @@ def get_optimizer(args, model):
     params_to_optimize = [p for p in model.parameters() if p.requires_grad]
     
     s = sum([np.prod(list(p.size())) for p in params_to_optimize])
-    print ('Number of params: %d' % s)
+    print (f'Number of params: {s}')
 
-    # Optimizer
-    optimizer = torch.optim.__dict__[args.optimizer](
-        params_to_optimize, **optimizer_args)
-
+    optimizer = utils.optimizers.get_optimizer(args.optimizer)(params_to_optimize, **optimizer_args)
+    
     return optimizer
 
 

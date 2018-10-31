@@ -107,9 +107,12 @@ def get_grid(*args, sz = 256):
     grid = []
     for a in args:
         b = a[:num_img].detach().cpu()
-        grid.append(b)
+        if b.shape[1] == 1:
+            grid.append(torch.cat( [b, b, b], dim=1 ) )
+        else: 
+            grid.append(b)
 
-    imgs = resize(torch.cat(grid), sz=sz)
+    imgs = resize( torch.cat(grid), sz=sz)
     x = torchvision.utils.make_grid(imgs, nrow = num_img)
     
     return x
