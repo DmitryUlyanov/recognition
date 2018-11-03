@@ -11,7 +11,7 @@ def get_optimizer(name):
     if name in sys.modules[__name__].__dict__:
         return sys.modules[__name__].__dict__[name]
     elif name in torch.optim.__dict__:
-        return torch.optim.__dict__[args.optimizer]
+        return torch.optim.__dict__[name]
     else:
         assert False, red(f"Cannot find optimizer with name {name}")
 

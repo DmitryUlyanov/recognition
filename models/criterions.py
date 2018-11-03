@@ -11,7 +11,6 @@ import torch.nn.functional as F
 import encoding.nn
 
 from models.DataParallelCriterion import DataParallelCriterion
-# from .loss import dice_loss
 
 def get_criterion(name, args, **kwargs):
     if name in sys.modules[__name__].__dict__:
@@ -21,7 +20,7 @@ def get_criterion(name, args, **kwargs):
     else:
         assert False, red(f"Cannot find loss with name {name}")
 
-    if args.use_all_gpus:
+    if args.use_all_gpus and args.parallel_criterion:
         criterion = DataParallelCriterion(criterion)
 
     return criterion
@@ -207,7 +206,6 @@ class DeepSupervisedBCECriterion(_Loss):
 
     def forward(self, input, targets):
 
-        # pred_pixel_lvl, preds_middle, pred_image_lvl, target_pixel_lvl, target_image_lvl = inputs_targets
         pred_pixel_lvl, preds_middle, pred_image_lvl = input 
         target_pixel_lvl, target_image_lvl = targets 
 
@@ -219,13 +217,17 @@ class DeepSupervisedBCECriterion(_Loss):
         loss_middle = torch.tensor(0, dtype=torch.float32, device=pred_pixel_lvl.device) 
         
         m = target_image_lvl > 0
+
         if m.sum().item() > 0:
             for pred_m in preds_middle:
                 loss_middle += 0.4 * fnn.binary_cross_entropy_with_logits(pred_m[m], target_pixel_lvl[m]) + dice_loss(torch.sigmoid(pred_m[m]), target_pixel_lvl[m])
             
-        pixel_lvl_loss = 0.4 * fnn.binary_cross_entropy_with_logits(pred_pixel_lvl, target_pixel_lvl) + dice_loss(torch.sigmoid(pred_pixel_lvl), target_pixel_lvl)
+        pixel_lvl_loss = 0.4 * fnn.binary_cross_entropy_with_logits(pred_pixel_lvl, target_pixel_lvl) 
+
+        if m.sum().item() > 0:
+            pixel_lvl_loss += dice_loss(torch.sigmoid(pred_pixel_lvl[m]), target_pixel_lvl[m])
             
-        total_loss = 0.05 * loss_image_lvl + 1 * pixel_lvl_loss + 0.1 * loss_middle
+        total_loss = 1. * loss_image_lvl + 1 * pixel_lvl_loss + 0.1 * loss_middle
 
         sep_losses = {
             'image_lvl': loss_image_lvl,
@@ -233,8 +235,7 @@ class DeepSupervisedBCECriterion(_Loss):
             'loss_middle': loss_middle
         }
         
-        # print(total_loss, loss_image_lvl, pixel_lvl_loss, loss_middle)
-        return total_loss, sep_losses #loss_image_lvl, pixel_lvl_loss, loss_middle
+        return total_loss, sep_losses
 
 
 
@@ -242,39 +243,13 @@ class DeepSupervisedBCECriterion(_Loss):
 
 eps = 1e-3
 def dice_loss(preds, trues, weight=None, is_average=False):
-    preds = preds.contiguous()
-    trues = trues.contiguous()
-    num = preds.size(0)
-    preds = preds.view(num, -1)
-    trues = trues.view(num, -1)
-    if weight is not None:
-        w = torch.autograd.Variable(weight).view(num, -1)
-        preds = preds * w
-        trues = trues * w
-    intersection = (preds * trues).sum(1)
-    scores = 1 - (2. * intersection + eps) / (preds.sum(1) + trues.sum(1) + eps)
+    b, c = preds.shape[0], preds.shape[1]
+    
+    preds = preds.view(b, c, -1)
+    trues = trues.view(b, c, -1)
 
-    # if is_average:
-    #     score = scores.sum()/num
-    #     return torch.clamp(score, 0., 1.)
-    # else:
+    intersection = (preds * trues).sum(2)
+    scores = 1 - (2. * intersection + eps) / (preds.sum(2) + trues.sum(2) + eps)
+
     return scores.mean()
         
-# def calculate_loss_multichannel(self, output, target, meter, training, iter_size):
-#         bce = F.binary_cross_entropy_with_logits(output, target)
-#         output = F.sigmoid(output)
-#         dice = dice_loss(output, target)
-#         dice_ch2 = dice_loss(output[:,-1,...], target[:,-1,...])
-#         dice_r = dice_round(output[:,-1,...], target[:,-1,...])
-
-#         loss = (self.config.loss['bce'] * bce + self.config.loss['dice'] * (1 - dice)) / iter_size
-
-#         return loss
-#         # if training:
-#         #     loss.backward()
-
-#         # meter['loss'] += loss.data.cpu().numpy()[0]
-#         # meter['dice'] += dice_ch2.data.cpu().numpy()[0] / iter_size
-#         # meter['bce'] += bce.data.cpu().numpy()[0] / iter_size
-#         # meter['dr'] += dice_r.data.cpu().numpy()[0] / iter_size
-#         return meter

@@ -12,6 +12,7 @@ def get_model_args(get_args):
         parser.add('--net_init', type=str, default="", help='pretrained|lsuv|default')
         parser.add('--lsuv_batch_size', type=int, default=-1)
         parser.add('--use_all_gpus', default=False, action='store_bool')
+        parser.add('--parallel_criterion', default=False, action='store_bool')
         parser.add('--fix_feature_extractor', default=False, action='store_bool')
         parser.add('--freeze_bn', default=False, action='store_bool')
 
@@ -79,10 +80,11 @@ def get_abstract_net(get_net):
         if args.use_all_gpus and args.device == 'cuda' and torch.cuda.device_count() > 1:
             print(yellow(' - Using all GPU\'s!'))
 
-            # model = torch.nn.DataParallel(model) 
-            import encoding
-
-            model = encoding.parallel.DataParallelModel(model)
+            if args.parallel_criterion:
+                import encoding
+                model = encoding.parallel.DataParallelModel(model)       
+            else:
+                model = torch.nn.DataParallel(model) 
             # encoding.parallel.patch_replication_callback(model)
             # import encoding
             # encoding.parallel.DataParallel(model)

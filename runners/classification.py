@@ -15,12 +15,12 @@ def get_args(parser):
     
     return parser
 
-# def check_data(data): #dataloader):
-#    (names, x_, y_)  = data #iter(dataloader_train).next()[1].to(args.device)
+def check_data(data): #dataloader):
+   (names, x_, y_)  = data #iter(dataloader_train).next()[1].to(args.device)
 
-#    assert isinstance(names, list) and isinstance(x_, list) and isinstance(y_, list), red("expecting each output to be a list of tensors")
-#    assert len(names) == len(x_)
-#    assert len(x_) == 1 or len(x_) == len(y_)
+   assert isinstance(names, list) and isinstance(x_, torch.cuda.FloatTensor) and isinstance(y_, list), red("expecting each output to be a list of tensors")
+   assert len(names) == len(y_)
+   assert len(x_) == 1 or len(x_) == len(y_)
 
 data = dict(last_it=0)
 
@@ -38,7 +38,7 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
     for it, (names, x_, *y_) in enumerate(dataloader):
         
 
-        # check_data((names, x_, y_))
+        check_data((names, x_, y_))
         
         y = [y.to(args.device, non_blocking=True) for y in y_]
         x = x_.to(args.device, non_blocking=True)
@@ -47,6 +47,7 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
         data_time.update(time.time() - end)
 
         output = model(x)
+        
         loss = criterion(output, y) 
         
         if part=='train':

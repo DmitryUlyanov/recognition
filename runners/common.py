@@ -102,7 +102,7 @@ def resize(imgs, sz=256):
 
 
 def get_grid(*args, sz = 256):
-    num_img = min(args[0].shape[0], 4)
+    num_img = min( min([len(x) for x in args]), 4)
 
     grid = []
     for a in args:
@@ -110,8 +110,9 @@ def get_grid(*args, sz = 256):
         if b.shape[1] == 1:
             grid.append(torch.cat( [b, b, b], dim=1 ) )
         else: 
-            grid.append(b)
+            grid.append(b[:, :3])
 
+    # print([x.shape for x in grid ])
     imgs = resize( torch.cat(grid), sz=sz)
     x = torchvision.utils.make_grid(imgs, nrow = num_img)
     
