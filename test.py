@@ -59,7 +59,7 @@ if args.set_eval_mode:
 else:
     model.train()
     
-criterion = criterions.get_loss(args.criterion).to(args.device)
+criterion = criterions.get_criterion(args.criterion, args).to(args.device)
 
 if args.save_driver is not None:
     save_driver = getattr(save_drivers, args.save_driver)

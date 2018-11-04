@@ -38,7 +38,7 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
     for it, (names, x_, *y_) in enumerate(dataloader):
         
 
-        check_data((names, x_, y_))
+        # check_data((names, x_, y_))
         
         y = [y.to(args.device, non_blocking=True) for y in y_]
         x = x_.to(args.device, non_blocking=True)

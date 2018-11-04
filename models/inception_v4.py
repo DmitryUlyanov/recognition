@@ -23,7 +23,7 @@ def get_args(parser):
 @get_abstract_net
 def get_net(args):
     
-    load_pretrained = args.net_init == 'pretrained'
+    load_pretrained = args.net_init == 'pretrained' and args.checkpoint == ""
     if load_pretrained:
         print(yellow('Loading a net, pretrained on ImageNet1k.'))
 
