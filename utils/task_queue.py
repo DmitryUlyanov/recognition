@@ -38,10 +38,12 @@ class TaskQueue(Queue):
 
     def worker(self):
         while True:
-            item, args, kwargs = self.get()
+            item = self.get()
             if item is None:
                 break
-            item(*args, **kwargs)  
+
+            fn, args, kwargs = item
+            fn(*args, **kwargs)  
             self.task_done()
 
     def stop_(self):
