@@ -13,10 +13,17 @@ import encoding.nn
 from models.DataParallelCriterion import DataParallelCriterion
 
 def get_criterion(name, args, **kwargs):
+
+    criterion_args = {}
+    for entry in args.criterion_args.split("^"):
+        k, v = entry.split('=')
+        criterion_args[k] = eval(v)
+
+    print(criterion_args)
     if name in sys.modules[__name__].__dict__:
-        criterion = sys.modules[__name__].__dict__[name](**kwargs)
+        criterion = sys.modules[__name__].__dict__[name](**criterion_args)
     elif name in torch.nn.modules.__dict__:
-        criterion = torch.nn.modules.__dict__[name](**kwargs)
+        criterion = torch.nn.modules.__dict__[name](**criterion_args)
     else:
         assert False, red(f"Cannot find loss with name {name}")
 
@@ -213,19 +220,20 @@ class DeepSupervisedBCECriterion(_Loss):
         # print(target_image_lvl, target_pixel_lvl.max(), target_pixel_lvl.mean())
         # print(pred_image_lvl.shape, target_image_lvl.shape)
         loss_image_lvl = fnn.binary_cross_entropy_with_logits(pred_image_lvl, target_image_lvl)
-        
+
+
         loss_middle = torch.tensor(0, dtype=torch.float32, device=pred_pixel_lvl.device) 
         
-        m = target_image_lvl > 0
+        # m = target_image_lvl > 0
 
-        if m.sum().item() > 0:
-            for pred_m in preds_middle:
-                loss_middle += 0.4 * fnn.binary_cross_entropy_with_logits(pred_m[m], target_pixel_lvl[m]) + dice_loss(torch.sigmoid(pred_m[m]), target_pixel_lvl[m])
+        # if m.sum().item() > 0:
+        #     for pred_m in preds_middle:
+        #         loss_middle += 0.4 * fnn.binary_cross_entropy_with_logits(pred_m[m], target_pixel_lvl[m]) + dice_loss(torch.sigmoid(pred_m[m]), target_pixel_lvl[m])
             
         pixel_lvl_loss = 0.4 * fnn.binary_cross_entropy_with_logits(pred_pixel_lvl, target_pixel_lvl) 
 
-        if m.sum().item() > 0:
-            pixel_lvl_loss += dice_loss(torch.sigmoid(pred_pixel_lvl[m]), target_pixel_lvl[m])
+        # if m.sum().item() > 0:
+        #     pixel_lvl_loss += dice_loss(torch.sigmoid(pred_pixel_lvl[m]), target_pixel_lvl[m])
             
         total_loss = 1. * loss_image_lvl + 1 * pixel_lvl_loss + 0.1 * loss_middle
 
@@ -237,6 +245,49 @@ class DeepSupervisedBCECriterion(_Loss):
         
         return total_loss, sep_losses
 
+
+class DeepSupervisedBCEPretrainCriterion(_Loss):
+    '''
+        image level loss + pixel level loss + additional supervision 
+    '''
+    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
+        super(DeepSupervisedBCEPretrainCriterion, self).__init__(size_average, reduce, reduction)
+
+        self.is_average = True 
+
+    def forward(self, input, targets):
+
+        pred_pixel_lvl, preds_middle, pred_image_lvl = input 
+        target_pixel_lvl, target_image_lvl = targets 
+
+        # print(pred_image_lvl, target_image_lvl)
+        # print(target_image_lvl, target_pixel_lvl.max(), target_pixel_lvl.mean())
+        # print(pred_image_lvl.shape, target_image_lvl.shape)
+        loss_image_lvl = fnn.binary_cross_entropy_with_logits(pred_image_lvl, target_image_lvl)
+
+
+        # loss_middle = torch.tensor(0, dtype=torch.float32, device=pred_pixel_lvl.device) 
+        
+        # m = target_image_lvl > 0
+
+        # if m.sum().item() > 0:
+        #     for pred_m in preds_middle:
+        #         loss_middle += 0.4 * fnn.binary_cross_entropy_with_logits(pred_m[m], target_pixel_lvl[m]) + dice_loss(torch.sigmoid(pred_m[m]), target_pixel_lvl[m])
+            
+        # pixel_lvl_loss = 0.4 * fnn.binary_cross_entropy_with_logits(pred_pixel_lvl, target_pixel_lvl) 
+
+        # if m.sum().item() > 0:
+        #     pixel_lvl_loss += dice_loss(torch.sigmoid(pred_pixel_lvl[m]), target_pixel_lvl[m])
+            
+        total_loss = 1. * loss_image_lvl # + 1 * pixel_lvl_loss + 0.1 * loss_middle
+
+        sep_losses = {
+            'image_lvl': loss_image_lvl,
+            # 'pixel_lvl_loss': pixel_lvl_loss,
+            # 'loss_middle': loss_middle
+        }
+        
+        return total_loss, sep_losses
 
 
 
