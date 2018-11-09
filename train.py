@@ -51,7 +51,7 @@ parser.add('--lr_reduce_factor', type=float, default=0.3)
 parser.add('--logging', default=True, action="store_bool")
 parser.add('--args-to-ignore', type=str, default="checkpoint,splits_dir,experiments_dir,extension")
 
-parser.add('--set_eval_mode', action='store_bool', default=False)
+parser.add('--set_eval_mode_in_train', action='store_bool', default=False)
 parser.add('--device', type=str, default='cuda')
 
 
@@ -103,7 +103,7 @@ m['runner'].run_epoch.writer = writer
 
 
 for epoch in range(0, args.num_epochs):
-    if args.set_eval_mode or (args.set_eval_mode_epoch >= 0 and epoch>=args.set_eval_mode_epoch):
+    if args.set_eval_mode_in_train or (args.set_eval_mode_epoch >= 0 and epoch>=args.set_eval_mode_epoch):
         print(f'Setting {yellow("eval")} mode!')
         model.eval()
     else:

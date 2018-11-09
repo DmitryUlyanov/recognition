@@ -29,10 +29,10 @@ parser.add('--experiment_dir', type=str, default="", help='manual seed')
 # parser.add('--experiments_dir', type=str, default="experiments", help='')
 parser.add('--part', type=str, default='val', help='test|val|train')
 
-parser.add('--set_eval_mode', action='store_bool', default=False)
+# parser.add('--set_eval_mode', action='store_bool', default=True)
 # parser.add('--config_name', type=str, default="config")
 
-parser.add('--need_softmax', default=False, action='store_bool')
+# parser.add('--need_softmax', default=False, action='store_bool')
 
 parser.add('--save_driver', default=None, type=str)
 parser.add('--dump_path', default=None, type=str)
@@ -40,6 +40,8 @@ parser.add('--dump_path', default=None, type=str)
 
 # Gather args across modules
 args, default_args, m = get_args_and_modules(parser, phase='test')
+
+args.set_eval_mode = True 
 
 # Setup everything else
 setup(args)

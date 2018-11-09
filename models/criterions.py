@@ -200,6 +200,26 @@ class DeepSupervisedCriterion(_Loss):
 
         return total_loss
 
+class LossBinaryDice(nn.Module):
+   def __init__(self, dice_weight=1):
+       super(LossBinaryDice, self).__init__()
+       self.nll_loss = nn.BCEWithLogitsLoss()
+       self.dice_weight = dice_weight
+
+   def forward(self, outputs, targets):
+       loss = self.nll_loss(outputs, targets)
+
+       if self.dice_weight:
+           smooth = 1e-5
+           target = (targets == 1.0).float()
+           prediction = F.sigmoid(outputs)
+           dice_part = 1 - 2 * (torch.sum(prediction * target) + smooth) / \
+                          (torch.sum(prediction) + torch.sum(target) + smooth)
+
+
+           loss += self.dice_weight * dice_part
+
+       return loss
 
 
 class DeepSupervisedBCECriterion(_Loss):
