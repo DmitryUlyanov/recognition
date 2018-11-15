@@ -7,14 +7,30 @@ from torch import nn
 import torch.nn.functional as fnn
 from torch.nn.modules.loss import _Loss
 import sys 
+import torch.nn.functional as F
+import encoding.nn
 
-def get_loss(name, **kwargs):
+from models.DataParallelCriterion import DataParallelCriterion
+
+def get_criterion(name, args, **kwargs):
+
+    criterion_args = {}
+    for entry in args.criterion_args.split("^"):
+        k, v = entry.split('=')
+        criterion_args[k] = eval(v)
+
+    print(criterion_args)
     if name in sys.modules[__name__].__dict__:
-        return sys.modules[__name__].__dict__[name](**kwargs)
+        criterion = sys.modules[__name__].__dict__[name](**criterion_args)
     elif name in torch.nn.modules.__dict__:
-        return torch.nn.modules.__dict__[name](**kwargs)
+        criterion = torch.nn.modules.__dict__[name](**criterion_args)
     else:
         assert False, red(f"Cannot find loss with name {name}")
+
+    if args.use_all_gpus and args.parallel_criterion:
+        criterion = DataParallelCriterion(criterion)
+
+    return criterion
 
 # -------------------------------------------------
 # ----------------- Lap1Loss  ---------------------
@@ -137,3 +153,174 @@ class MultiHeadCriterion(_Loss):
         return loss
 
 
+
+
+
+
+
+
+
+
+from models.lovasz_losses import lovasz_hinge, lovasz_loss_ignore_empty
+
+def symmetric_lovasz(outputs, targets):
+    return (lovasz_hinge(outputs, targets) + lovasz_hinge(-outputs, 1 - targets)) / 2
+
+
+def symmetric_lovasz_ignore_empty(outputs, targets, truth_image):
+    return (lovasz_loss_ignore_empty(outputs, targets, truth_image) +
+            lovasz_loss_ignore_empty(-outputs, 1 - targets, truth_image)) / 2
+
+
+class DeepSupervisedCriterion(_Loss):
+    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
+        super(DeepSupervisedCriterion, self).__init__(size_average, reduce, reduction)
+
+        self.is_average = True 
+
+    def forward(self, input, targets):
+
+        pred_pixel_lvl, preds_middle, pred_image_lvl = input 
+
+        total_loss = 0
+        for ti in range(targets.shape[1]):
+            target = targets[:, ti, ...]
+            target_image_lvl = (target.sum(dim=(1, 2)) > 0).float()
+
+            loss_image = fnn.binary_cross_entropy_with_logits(pred_image_lvl, target_image_lvl, reduce=self.is_average)
+            loss_pixel = 0
+            for pred_m in preds_middle:
+                loss_pixel += symmetric_lovasz_ignore_empty(pred_m.squeeze(1), target, target_image_lvl)
+                # loss_pixel += fnn.binary_cross_entropy_with_logits(pred_m.squeeze(1), target)
+
+            # loss = fnn.binary_cross_entropy_with_logits(pred_pixel_lvl.squeeze(1), target)    
+            loss = symmetric_lovasz(pred_pixel_lvl.squeeze(1), target)
+
+            total_loss += 0.05 * loss_image + 0.1 * loss_pixel + 1 * loss
+
+        return total_loss
+
+class LossBinaryDice(nn.Module):
+   def __init__(self, dice_weight=1):
+       super(LossBinaryDice, self).__init__()
+       self.nll_loss = nn.BCEWithLogitsLoss()
+       self.dice_weight = dice_weight
+
+   def forward(self, outputs, targets):
+       loss = self.nll_loss(outputs, targets)
+
+       if self.dice_weight:
+           smooth = 1e-5
+           target = (targets == 1.0).float()
+           prediction = F.sigmoid(outputs)
+           dice_part = 1 - 2 * (torch.sum(prediction * target) + smooth) / \
+                          (torch.sum(prediction) + torch.sum(target) + smooth)
+
+
+           loss += self.dice_weight * dice_part
+
+       return loss
+
+
+class DeepSupervisedBCECriterion(_Loss):
+    '''
+        image level loss + pixel level loss + additional supervision 
+    '''
+    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
+        super(DeepSupervisedBCECriterion, self).__init__(size_average, reduce, reduction)
+
+        self.is_average = True 
+
+    def forward(self, input, targets):
+
+        pred_pixel_lvl, preds_middle, pred_image_lvl = input 
+        target_pixel_lvl, target_image_lvl = targets 
+
+        # print(pred_image_lvl, target_image_lvl)
+        # print(target_image_lvl, target_pixel_lvl.max(), target_pixel_lvl.mean())
+        # print(pred_image_lvl.shape, target_image_lvl.shape)
+        loss_image_lvl = fnn.binary_cross_entropy_with_logits(pred_image_lvl, target_image_lvl)
+
+
+        loss_middle = torch.tensor(0, dtype=torch.float32, device=pred_pixel_lvl.device) 
+        
+        # m = target_image_lvl > 0
+
+        # if m.sum().item() > 0:
+        #     for pred_m in preds_middle:
+        #         loss_middle += 0.4 * fnn.binary_cross_entropy_with_logits(pred_m[m], target_pixel_lvl[m]) + dice_loss(torch.sigmoid(pred_m[m]), target_pixel_lvl[m])
+            
+        pixel_lvl_loss = 0.4 * fnn.binary_cross_entropy_with_logits(pred_pixel_lvl, target_pixel_lvl) 
+
+        # if m.sum().item() > 0:
+        #     pixel_lvl_loss += dice_loss(torch.sigmoid(pred_pixel_lvl[m]), target_pixel_lvl[m])
+            
+        total_loss = 1. * loss_image_lvl + 1 * pixel_lvl_loss + 0.1 * loss_middle
+
+        sep_losses = {
+            'image_lvl': loss_image_lvl,
+            'pixel_lvl_loss': pixel_lvl_loss,
+            'loss_middle': loss_middle
+        }
+        
+        return total_loss, sep_losses
+
+
+class DeepSupervisedBCEPretrainCriterion(_Loss):
+    '''
+        image level loss + pixel level loss + additional supervision 
+    '''
+    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
+        super(DeepSupervisedBCEPretrainCriterion, self).__init__(size_average, reduce, reduction)
+
+        self.is_average = True 
+
+    def forward(self, input, targets):
+
+        pred_pixel_lvl, preds_middle, pred_image_lvl = input 
+        target_pixel_lvl, target_image_lvl = targets 
+
+        # print(pred_image_lvl, target_image_lvl)
+        # print(target_image_lvl, target_pixel_lvl.max(), target_pixel_lvl.mean())
+        # print(pred_image_lvl.shape, target_image_lvl.shape)
+        loss_image_lvl = fnn.binary_cross_entropy_with_logits(pred_image_lvl, target_image_lvl)
+
+
+        # loss_middle = torch.tensor(0, dtype=torch.float32, device=pred_pixel_lvl.device) 
+        
+        # m = target_image_lvl > 0
+
+        # if m.sum().item() > 0:
+        #     for pred_m in preds_middle:
+        #         loss_middle += 0.4 * fnn.binary_cross_entropy_with_logits(pred_m[m], target_pixel_lvl[m]) + dice_loss(torch.sigmoid(pred_m[m]), target_pixel_lvl[m])
+            
+        # pixel_lvl_loss = 0.4 * fnn.binary_cross_entropy_with_logits(pred_pixel_lvl, target_pixel_lvl) 
+
+        # if m.sum().item() > 0:
+        #     pixel_lvl_loss += dice_loss(torch.sigmoid(pred_pixel_lvl[m]), target_pixel_lvl[m])
+            
+        total_loss = 1. * loss_image_lvl # + 1 * pixel_lvl_loss + 0.1 * loss_middle
+
+        sep_losses = {
+            'image_lvl': loss_image_lvl,
+            # 'pixel_lvl_loss': pixel_lvl_loss,
+            # 'loss_middle': loss_middle
+        }
+        
+        return total_loss, sep_losses
+
+
+
+
+eps = 1e-3
+def dice_loss(preds, trues, weight=None, is_average=False):
+    b, c = preds.shape[0], preds.shape[1]
+    
+    preds = preds.view(b, c, -1)
+    trues = trues.view(b, c, -1)
+
+    intersection = (preds * trues).sum(2)
+    scores = 1 - (2. * intersection + eps) / (preds.sum(2) + trues.sum(2) + eps)
+
+    return scores.mean()
+        

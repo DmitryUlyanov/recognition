@@ -12,7 +12,9 @@ def get_model_args(get_args):
         parser.add('--net_init', type=str, default="", help='pretrained|lsuv|default')
         parser.add('--lsuv_batch_size', type=int, default=-1)
         parser.add('--use_all_gpus', default=False, action='store_bool')
+        parser.add('--parallel_criterion', default=False, action='store_bool')
         parser.add('--fix_feature_extractor', default=False, action='store_bool')
+        parser.add('--freeze_bn', default=False, action='store_bool')
 
         return get_args(parser)
 
@@ -45,7 +47,7 @@ def get_abstract_net(get_net):
                 print(args.experiment_dir)
                 assert False
 
-            print(f"Loading {yellow(args.model)} from checkpoint {yellow(checkpoint_path)}")
+            print(f" - Loading {yellow(args.model)} from checkpoint {yellow(checkpoint_path)}")
             
             state_dict = torch.load(checkpoint_path)
             if isinstance(state_dict, dict): 
@@ -58,10 +60,36 @@ def get_abstract_net(get_net):
             value = not args.fix_feature_extractor
             set_param_grad(model.feature_extractor, value = value, set_eval_mode = False)
 
+        if args.freeze_bn:
+            print(yellow(' - Freezing BN'))
 
-        if args.use_all_gpus and args.device == 'cuda':
-            print(yellow('Using all GPU\'s!'))
-            model = torch.nn.DataParallel(model) 
+            def freeze_bn(m):
+                if isinstance(m, torch.nn.BatchNorm2d):
+
+                    m.training = False
+                    
+                    def nop(*args, **kwargs):
+                        pass
+
+                    m.train = nop
+
+            model.apply(freeze_bn)
+            
+
+
+        if args.use_all_gpus and args.device == 'cuda' and torch.cuda.device_count() > 1:
+            print(yellow(' - Using all GPU\'s!'))
+
+            if args.parallel_criterion:
+                import encoding
+                model = encoding.parallel.DataParallelModel(model)       
+            else:
+                model = torch.nn.DataParallel(model) 
+            # encoding.parallel.patch_replication_callback(model)
+            # import encoding
+            # encoding.parallel.DataParallel(model)
+
+
 
         return model
 
@@ -125,3 +153,17 @@ def load_model_from_checkpoint(checkpoint_path, args_to_update=None):
         model = m_model.get_net(munchify(args), None)
 
         return model, args
+
+
+
+
+
+
+
+
+
+
+
+
+
+

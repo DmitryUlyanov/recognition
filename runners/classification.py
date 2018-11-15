@@ -5,6 +5,7 @@ import numpy as np
 import tqdm
 from runners.common import AverageMeter, accuracy, print_stat
 from huepy import red, lightblue, orange, cyan
+from utils.task_queue import TaskQueue
 
 
 def get_args(parser):
@@ -16,12 +17,12 @@ def get_args(parser):
     
     return parser
 
-# def check_data(data): #dataloader):
-#    (names, x_, y_)  = data #iter(dataloader_train).next()[1].to(args.device)
+def check_data(data): #dataloader):
+   (names, x_, y_)  = data #iter(dataloader_train).next()[1].to(args.device)
 
-#    assert isinstance(names, list) and isinstance(x_, list) and isinstance(y_, list), red("expecting each output to be a list of tensors")
-#    assert len(names) == len(x_)
-#    assert len(x_) == 1 or len(x_) == len(y_)
+   assert isinstance(names, list) and isinstance(x_, torch.cuda.FloatTensor) and isinstance(y_, list), red("expecting each output to be a list of tensors")
+   assert len(names) == len(y_)
+   assert len(x_) == 1 or len(x_) == len(y_)
 
 data = dict(last_it=0)
 
@@ -33,6 +34,8 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
     
     writer = run_epoch.writer
     outputs = []
+
+    tq = TaskQueue(maxsize=64, num_workers=5, verbosity=0)  
 
     end = time.time()
     
@@ -48,6 +51,7 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
         data_time.update(time.time() - end)
 
         output = model(x)
+        
         loss = criterion(output, y) 
         
         if part=='train':
@@ -65,6 +69,19 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
         acc_per_target = accuracy(output, y)
         acc_meter.update(np.mean([x for x in acc_per_target if x != -1]))
 
+
+        if 'save_driver' in args and args.save_driver is not None:
+            for num, (name, x) in enumerate(zip(names, x_)):
+                y = [y[num].detach().cpu().numpy() for y in y_]
+                pred = [o[num].detach().cpu().numpy() for o in output]
+
+                tq.add_task(npz_per_item, {
+                    # 'input':  _x.detach().cpu().numpy(),
+                    # 'target': y,
+                    'pred':   pred,#.detach().cpu().numpy(),
+                    'name':   str(name),
+                }, path=f'{args.dump_path}/{os.path.basename(name)}.png', args=args)  
+
         # Logging 
         loss_meter.update(loss.item(), x.shape[0])
 
@@ -81,10 +98,12 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
                   f'{print_stat("Data", data_time.val, data_time.avg)}\t'\
                   f'{print_stat("Loss", loss_meter.val, loss_meter.avg, 4)}\t',
                   f'{print_stat("Acc",  acc_meter.val,  acc_meter.avg, 4)}\t')
-        
+
         if args.niter_in_epoch > 0 and it % args.niter_in_epoch == 0 and it > 0:
             break 
             
+    tq.stop_()
+
     print(f' * \n'
           f' * Epoch {epoch} {red(part.capitalize())}:\t'
           f'Loss {loss_meter.avg:.4f}\t'
@@ -96,70 +115,19 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
         writer.add_scalar(f'Metrics/{part}/acc',  acc_meter.avg,   data['last_it'])
 
     return loss_meter.avg
-# def run_epoch_test(dataloader, model, criterion, epoch, args, need_softmax=False, save_driver=None):
-#     batch_time = AverageMeter()
-#     data_time  = AverageMeter()
-#     loss_meter = AverageMeter()
-#     acc_meter  = AverageMeter()
-     
-#     outputs, all_names = [], []
-
-#     end = time.time()
-#     for it, (names, x_, *y_) in enumerate(dataloader):
-#         # check_data((names, x_, y_))
-
-#         # Measure data loading time
-#         data_time.update(time.time() - end)
-
-#         y_ = [y.to(args.device, non_blocking=True) for y in y_]
-#         x_ = x_.to(args.device, non_blocking=True)
-        
-#         # Measure data loading time
-#         data_time.update(time.time() - end)
-
-#         output = model(x_)
-#         loss = criterion(output, y_) 
-
-#         if save_driver is not None:
-#             for num, (name, x) in enumerate(zip(names, x_)):
-#                 y = [y[num].detach().cpu().numpy() for y in y_]
-#                 pred = [o[num].detach().cpu().numpy() for o in output]
-#                 save_driver({
-#                   'target': y,
-#                   'pred':   pred,
-#                   'name':   str(name),
-#                   }, path=f'{args.dump_path}/{hash(name)}.npz', args=args)
-        
-
-#         # if need_softmax:
-#         #     output = [softmax(o) for o in output]
-            
-#             # outputs.append([o.cpu().numpy() for o in output])
-
-#         loss_meter.update(loss.item())
-#         acc_per_target = accuracy(output, y_)
-#         acc_meter.update(np.mean(acc_per_target))
-
-#         print(acc_per_target)
-
-#         # Measure elapsed time
-#         batch_time.update(time.time() - end)
-#         end = time.time()
-
-#         if it % args.print_frequency == 0:
-#             print(f'{orange("Test")}: [{epoch}][{it}/{len(dataloader)}]\t'\
-#                   f'{print_stat("Time", batch_time.val, batch_time.avg)}\t'\
-#                   f'{print_stat("Data", data_time.val, data_time.avg)}\t'\
-#                   f'{print_stat("Loss", loss_meter.val, loss_meter.avg, 4)}\t',
-#                   f'{print_stat("Acc",  acc_meter.val,  acc_meter.avg, 4)}\t')
-                  
-
-#     print(f' * \n'
-#           f' * Epoch {epoch} {red("Testing")}:\t'
-#           f'Loss {loss_meter.avg:.4f}\t'
-#           f'Acc  {acc_meter.avg:.3f}\t'
-#           f' *\t\n')
 
 
-#     return loss_meter.avg
+def npz_per_item(data, path, args):
+    """
+    Saves predictions to npz format, using one npy per sample,
+    and sample names as keys
+
+    :param output: Predictions by sample names
+    :param path: Path to resulting npz
+    """
+
+    np.savez_compressed(path, **data)
+
+
+
 
