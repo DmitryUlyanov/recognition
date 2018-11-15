@@ -12,6 +12,7 @@ def get_args(parser):
     parser.add('--mixup_alpha', type=float, default=0.1)
 
     parser.add('--print_frequency', type=int, default=50)
+    parser.add('--niter_in_epoch', type=int, default=0)
     
     return parser
 
@@ -81,7 +82,9 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
                   f'{print_stat("Loss", loss_meter.val, loss_meter.avg, 4)}\t',
                   f'{print_stat("Acc",  acc_meter.val,  acc_meter.avg, 4)}\t')
         
-    
+        if args.niter_in_epoch > 0 and it % args.niter_in_epoch == 0 and it > 0:
+            break 
+            
     print(f' * \n'
           f' * Epoch {epoch} {red(part.capitalize())}:\t'
           f'Loss {loss_meter.avg:.4f}\t'
