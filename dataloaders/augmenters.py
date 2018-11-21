@@ -14,15 +14,41 @@ often = lambda aug: iaa.Sometimes(0.8, aug)
 
 
 class ImgAugTransform(object):
-    def __init__(self, augmenter_pipeline=None):
-        self.augmenter_pipeline = augmenter_pipeline
+    def __init__(self, shared_transform=None, geom_transform=None, color_transform=None):
+        self.shared_transform = shared_transform if shared_transform is not None else Identity
+        self.geom_transform = geom_transform if geom_transform is not None else Identity
+        self.color_transform = color_transform if color_transform is not None else Identity
         
-    def __call__(self, img):
-        
-        # if self.augmenter_pipeline is not None:
-        img = Image.fromarray(self.augmenter_pipeline.augment_image(np.array(img)))
+    def __call__(self, imgs, masks=[]):
+        if not isinstance(imgs, list):
+            assert False
 
-        return img
+        pil = False
+        if isinstance(imgs[0], Image.Image):
+            pil = True
+            imgs = [np.array(img) for img in imgs]
+            masks = [np.array(img) for img in masks]
+
+
+        shared_transform_det  = self.shared_transform.to_deterministic()
+        imgs  = [shared_transform_det.augment_image(x) for x in imgs]
+        masks = [shared_transform_det.augment_image(x) for x in masks]
+
+
+        geom_transform_det  = self.geom_transform.to_deterministic()
+        imgs  = [geom_transform_det.augment_image(x) for x in imgs]
+        masks = [geom_transform_det.augment_image(x) for x in masks]
+
+        color_transform_det  = self.color_transform.to_deterministic()
+        imgs  = [color_transform_det.augment_image(x) for x in imgs]
+
+
+        if pil:
+            imgs =  [Image.fromarray(x) for x in imgs]
+            masks = [Image.fromarray(x) for x in masks]
+
+        return imgs, masks 
+
         
 # -------- -----------------------------------
 # -------- GaussianBlurCV2 -------------------
@@ -133,7 +159,12 @@ def RandomCrop(crop_size, shared_crop):
 def identity(x):
     return x
 Identity = transforms.Lambda(identity)
-
+def lambda_to_deterministic(self):
+    return self
+def lambda_augment_image(self, img):
+    return self(img)
+transforms.Lambda.to_deterministic = lambda_to_deterministic
+transforms.Lambda.augment_image = lambda_augment_image
 
 # -------------------------------------------------
 # ------------- ResizeCV2  ------------------------

@@ -4,6 +4,7 @@ from huepy import red, yellow
 from utils.utils import load_module
 from munch import munchify
 from models.common import set_param_grad
+from dataloaders.augmenters import Identity
 import os 
 
 def get_model_args(get_args):
@@ -15,6 +16,7 @@ def get_model_args(get_args):
         parser.add('--parallel_criterion', default=False, action='store_bool')
         parser.add('--fix_feature_extractor', default=False, action='store_bool')
         parser.add('--freeze_bn', default=False, action='store_bool')
+        parser.add('--merge_model_and_loss', default=False, action='store_bool')
 
         return get_args(parser)
 
@@ -22,7 +24,7 @@ def get_model_args(get_args):
 
 
 def get_abstract_net(get_net):
-    def wrapper(args, train_dataloader):
+    def wrapper(args, train_dataloader, criterion):
 
         model = get_net(args)
         model = model.to(args.device)
@@ -74,8 +76,9 @@ def get_abstract_net(get_net):
                     m.train = nop
 
             model.apply(freeze_bn)
-            
-
+        
+        if args.merge_model_and_loss:
+            model = ModelAndLoss(model, criterion)
 
         if args.use_all_gpus and args.device == 'cuda' and torch.cuda.device_count() > 1:
             print(yellow(' - Using all GPU\'s!'))
@@ -95,12 +98,25 @@ def get_abstract_net(get_net):
 
     return wrapper
 
+def get_abstract_native_transform(get_native_transform):
+    def wrapper():
+        
+        res = get_native_transform()
+        if res is None:
+            res = Identity
+
+        return res
+
+    return wrapper
 
 def save_model(model, epoch, args):
     
     model_to_save = model
     if isinstance(model, torch.nn.DataParallel):
         model_to_save = model.module
+
+    if isinstance(model_to_save, ModelAndLoss):
+        model_to_save = model_to_save.model
 
     dict_to_save = { 
         'state_dict': model_to_save.state_dict(), 
@@ -138,23 +154,45 @@ def load_model_from_checkpoint(checkpoint_path, args_to_update=None):
         args['checkpoint'] = checkpoint_path
         args['net_init'] = 'checkpoint'
         args['use_all_gpus'] = False
+        args['parallel_criterion'] = False
+        args['freeze_bn'] = False
 
         if checkpoint_path == 'extensions/rawr/data/lrnet/experiments/10-12,13:20;config_name:lrnet/checkpoints/model_50.pth':
             args['predictor_config']['return_features'] = False
             args['processor_config']['num_maps_input'] = 3
             args['processor_config']['filter_size'] = 3
             args['processor_config']['model'] += '_'
+        
+        if 'processor_config' in args:    
+            args['processor_config']['freeze_bn'] = False
+        
+        if 'predictor_config' in args:
+            args['predictor_config']['freeze_bn'] = False
 
         if args_to_update is not None:
             args.update(args_to_update)
 
         m_model = load_module(args['extension'], 'models', args['model'])
 
+        print(args)
         model = m_model.get_net(munchify(args), None)
 
         return model, args
 
 
+
+
+class ModelAndLoss(torch.nn.Module):
+    def __init__(self, model, loss):
+        super(ModelAndLoss, self).__init__()
+        self.model = model
+        self.loss = loss
+
+    def forward(self, target, *data):
+        output = self.model(*data)
+        loss = self.loss(output, target)
+
+        return loss, output
 
 
 

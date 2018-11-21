@@ -15,9 +15,10 @@ from models.DataParallelCriterion import DataParallelCriterion
 def get_criterion(name, args, **kwargs):
 
     criterion_args = {}
-    for entry in args.criterion_args.split("^"):
-        k, v = entry.split('=')
-        criterion_args[k] = eval(v)
+    if args.criterion_args != '':
+        for entry in args.criterion_args.split("^"):
+            k, v = entry.split('=')
+            criterion_args[k] = eval(v)
 
     print(criterion_args)
     if name in sys.modules[__name__].__dict__:
