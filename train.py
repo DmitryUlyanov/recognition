@@ -84,6 +84,7 @@ model_native_transform = m['model'].get_native_transform()
 dataloader_train       = m['dataloader'].get_dataloader(args, model_native_transform, 'train')
 dataloader_val         = m['dataloader'].get_dataloader(args, model_native_transform, 'val')
 
+
 # Load criterion
 if args.criterion != "": 
     criterion = criterions.get_criterion(args.criterion, args).to(args.device)
@@ -98,18 +99,19 @@ scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args.patience, factor=a
 # Dump args
 save_yaml(vars(args), f'{args.experiment_dir}/args_modified.yaml')
 
-
+args.get_dataloader = m['dataloader'].get_dataloader
 m['runner'].run_epoch.writer = writer
 
 
 for epoch in range(0, args.num_epochs):
     if args.set_eval_mode_in_train or (args.set_eval_mode_epoch >= 0 and epoch>=args.set_eval_mode_epoch):
-        print(f'Setting {yellow("eval")} mode!')
+        print(yellow(f' - Setting eval mode!'))
         model.eval()
     else:
         model.train()
 
     # Train
+
     torch.set_grad_enabled(True)
     m['runner'].run_epoch(dataloader_train, model, criterion, optimizer, epoch, args, part='train')
     

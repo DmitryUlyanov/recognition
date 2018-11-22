@@ -115,7 +115,7 @@ def save_model(model, epoch, args):
     if isinstance(model, torch.nn.DataParallel):
         model_to_save = model.module
 
-    if isinstance(model_to_save, ModelAndLoss):
+    if 'ModelAndLoss' in str(type(model_to_save)):
         model_to_save = model_to_save.model
 
     dict_to_save = { 

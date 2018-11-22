@@ -29,7 +29,7 @@ parser.add('--experiment_dir', type=str, default="", help='manual seed')
 # parser.add('--experiments_dir', type=str, default="experiments", help='')
 parser.add('--part', type=str, default='val', help='test|val|train')
 
-# parser.add('--set_eval_mode', action='store_bool', default=True)
+parser.add('--set_eval_mode', action='store_bool', default=True)
 # parser.add('--config_name', type=str, default="config")
 
 # parser.add('--need_softmax', default=False, action='store_bool')
@@ -41,7 +41,7 @@ parser.add('--dump_path', default=None, type=str)
 # Gather args across modules
 args, default_args, m = get_args_and_modules(parser, phase='test')
 
-args.set_eval_mode = True 
+# args.set_eval_mode = True 
 
 # Setup everything else
 setup(args)
@@ -53,15 +53,18 @@ print_experiment_info(args, default_args, args.experiment_dir)
 model_native_transform = m['model'].get_native_transform()
 dataloader = m['dataloader'].get_dataloader(args, model_native_transform, args.part)
 
+
+criterion = criterions.get_criterion(args.criterion, args).to(args.device)
+
+
 # Load model 
-model = m['model'].get_net(args, dataloader)
+model = m['model'].get_net(args, dataloader, criterion)
 
 if args.set_eval_mode:
     model.eval()
 else:
     model.train()
     
-criterion = criterions.get_criterion(args.criterion, args).to(args.device)
 
 if args.save_driver is not None:
     save_driver = getattr(save_drivers, args.save_driver)
