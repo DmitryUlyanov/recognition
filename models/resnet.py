@@ -15,6 +15,8 @@ def get_args(parser):
     parser.add('--arch',          type=str,    default='resnet18')
     parser.add('--num_classes',   type=str,  default="")
 
+    parser.add('--num_input_channels',  type=int,  default=3)
+
     parser.add('--layers_to_fix', type=str, default="")
 
     return parser
@@ -29,6 +31,25 @@ def get_net(args):
 
     resnet = models.__dict__[args.arch](pretrained=load_pretrained)
 
+    # If an image has different number of channelss
+    if args.num_input_channels != 3:
+        if args.num_input_channels % 3 != 0:
+            assert False
+
+        conv1_ = resnet.conv1
+        resnet.conv1 = torch.nn.Conv2d(
+            args.num_input_channels, 
+            conv1_.out_channels, 
+            kernel_size=conv1_.kernel_size, 
+            stride=conv1_.stride, 
+            padding=conv1_.padding, 
+            bias=False
+        )
+
+        for i in range(int(args.num_input_channels / 3)):
+            resnet.conv1.weight.data[:, i * 3: (i + 1) * 3] = conv1_.weight.data / 3
+
+
     # Extractor
     feature_extractor = nn.Sequential(
                                 resnet.conv1,
@@ -40,6 +61,7 @@ def get_net(args):
                                 resnet.layer3,
                                 resnet.layer4)
 
+     
     # Predictor 
     predictor = MultiHead(in_features = resnet.fc.in_features, num_classes=[int(x) for x in args.num_classes.split(',')])
     if args.dropout_p > 0:
@@ -54,13 +76,7 @@ def get_net(args):
     #     for l in args.layers_to_fix.split(','):
     #         model[l] = NoParam(model[l])
 
-    # if args.use_cond:
-    #     conv1_ = model.conv1
-    #     model.conv1 = torch.nn.Conv2d(conv1_.in_channels * 3, conv1_.out_channels, kernel_size=conv1_.kernel_size, stride=conv1_.stride, padding=conv1_.padding, bias=False)
-    #     model.conv1.weight.data[:, 0:3] = conv1_.weight.data/3
-    #     model.conv1.weight.data[:, 3:6] = conv1_.weight.data/3
-    #     model.conv1.weight.data[:, 6:9] = conv1_.weight.data/3
-
+   
     # TableModule(model.modules[0], 3, 1)
 
     return model

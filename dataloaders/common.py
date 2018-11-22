@@ -7,12 +7,16 @@ from huepy import red
 def is_image_file(filename):
     return any(filename.lower().endswith(extension) for extension in [".png", ".jpg", ".jpeg"])
 
-def get_image_cv2(path):
+def get_image_cv2(path, force_3channels=False):
     img = cv2.imread(path, -1)
     if img is None:
         print(red(path))
-    img = img[:, :, :3]
-    img = img[:, :, ::-1]
+    if len(img.shape) == 3:
+        img = img[:, :, :3]
+        img = img[:, :, ::-1]
+    elif force_3channels:
+        img = np.concatenate([img[:, :, None], img[:, :, None], img[:, :, None]], axis=2)
+        
     return img
 
 def get_image_pil(path):
