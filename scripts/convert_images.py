@@ -7,6 +7,7 @@ from tqdm import tqdm
 import cv2
 from joblib import Parallel, delayed
 import colored_traceback.auto
+from huepy import red 
 
 parser = argparse.ArgumentParser(conflict_handler='resolve')
 parser.add = parser.add_argument
@@ -18,7 +19,7 @@ parser.add('--in_dir',  type=str, help='', default='')
 parser.add('--out_dir',  type=str, default='', help='')
 
 
-parser.add('--out_ext',    type=str, default='', help='')
+parser.add('--out_ext',    type=str, default='png', help='')
 parser.add('--out_jpg_q',  type=int, default=99,  help='')
 
 parser.add('--out_img_width',   type=int, default=0,  help='')
@@ -50,9 +51,11 @@ def image_resize(image, specific_size = None, max_dim = None, inter = cv2.INTER_
 
         max_dim_ = float(max(h, w))
 
-        height, width = int(round(h / vmax_dim_ * max_dim)), int(round(w / vmax_dim_ * max_dim))  
-      
-    resized = cv2.resize(image, (height, width), interpolation = inter)
+        height, width = int(round(h / max_dim_ * max_dim)), int(round(w / max_dim_ * max_dim))  
+        
+        # print(height, width)
+
+    resized = cv2.resize(image, (width, height), interpolation = inter)
 
     return resized
 
@@ -62,14 +65,14 @@ def convert(src, dst, args):
     if args.overwrite or not os.path.exists(dst):
 
         img = cv2.imread(src, -1)
-
-        if args.out_img_width > 0 and args.out_img_height > 0:
-
+        if img is None:
+            print(red(src))
+            return
+        
         if args.save_aspect_ratio:
             img = image_resize(img, max_dim=args.max_dim)
         else:
             img = image_resize(img, specific_size=(args.out_img_height, args.out_img_width)) 
-
 
         if args.out_ext == 'png':
             cv2.imwrite(dst, img,  [cv2.IMWRITE_PNG_COMPRESSION, 9])
@@ -79,11 +82,19 @@ def convert(src, dst, args):
 def basename_no_ext(x):
     return '.'.join(os.path.basename(x).split('.')[:-1])
 
-os.makedirs(args.out_dir, exist_ok = True)
 
-img_exts = ['jpg', 'png', 'jpeg', 'tiff', 'bmp']
-in_paths = sum([glob(f'{args.in_dir}/*.{x}') for x in img_exts] + [glob(f'{args.in_dir}/*.{x.upper()}') for x in img_exts], [])
-out_paths = [f"{args.out_dir}/{os.path.basename(x) + f'.{args.out_ext}'}" for x in in_paths]
+
+if args.in_dir != '':
+    img_exts = ['jpg', 'png', 'jpeg', 'tiff', 'bmp']
+    in_paths = sum([glob(f'{args.in_dir}/*.{x}') for x in img_exts] + [glob(f'{args.in_dir}/*.{x.upper()}') for x in img_exts], [])
+    out_paths = [f"{args.out_dir}/{os.path.basename(x) + f'.{args.out_ext}'}" for x in in_paths]
+
+    os.makedirs(args.out_dir, exist_ok = True)
+elif args.img_list != '':
+    in_paths = np.loadtxt(args.img_list, dtype=str)
+    out_paths = [f"{os.path.dirname(x)}/resized/{os.path.basename(x) + f'.{args.out_ext}'}" for x in in_paths]
+else:
+    assert False
 
 print(f'Number of input images: {len(in_paths)}')
 
