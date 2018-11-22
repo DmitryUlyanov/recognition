@@ -8,9 +8,9 @@ import torch.nn.functional as fnn
 from torch.nn.modules.loss import _Loss
 import sys 
 import torch.nn.functional as F
-import encoding.nn
+# import encoding.nn
 
-from models.DataParallelCriterion import DataParallelCriterion
+# from models.DataParallelCriterion import DataParallelCriterion
 
 def get_criterion(name, args, **kwargs):
 
