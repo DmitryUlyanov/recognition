@@ -62,8 +62,8 @@ def get_net(args):
 
     # Predictor 
     predictor = MultiHead(in_features = model.last_linear.in_features, num_classes=num_classes)
-    if args.dropout_p > 0:
-        predictor = nn.Sequential( nn.Dropout(args.dropout_p), predictor)
+    # if args.dropout_p > 0:
+    predictor = nn.Sequential( nn.Dropout(args.dropout_p), predictor)
 
     # Construct
     model = BaseModel(feature_extractor, predictor)

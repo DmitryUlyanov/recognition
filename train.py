@@ -52,6 +52,7 @@ parser.add('--logging', default=True, action="store_bool")
 parser.add('--args-to-ignore', type=str, default="checkpoint,splits_dir,experiments_dir,extension")
 
 parser.add('--set_eval_mode_in_train', action='store_bool', default=False)
+parser.add('--set_eval_mode_in_test', action='store_bool', default=True)
 parser.add('--device', type=str, default='cuda')
 
 
@@ -116,7 +117,11 @@ for epoch in range(0, args.num_epochs):
     m['runner'].run_epoch(dataloader_train, model, criterion, optimizer, epoch, args, part='train')
     
     # Validate
-    model.eval()
+    if args.set_eval_mode_in_test:
+        model.eval()
+    else:
+        model.train()
+
     torch.set_grad_enabled(False)
     val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, args, part='val')
     
