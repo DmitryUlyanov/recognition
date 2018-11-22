@@ -32,8 +32,8 @@ def get_net(args):
     num_classes = [int(x) for x in args.num_classes.split(',')]
 
     predictor = MultiHead(in_features = 1536, num_classes=num_classes)
-    if args.dropout_p > 0:
-        predictor = nn.Sequential( nn.Dropout(args.dropout_p), predictor)
+    # if args.dropout_p > 0:
+    predictor = nn.Sequential( nn.Dropout(args.dropout_p), predictor)
     
     model.predictor =  predictor
 
