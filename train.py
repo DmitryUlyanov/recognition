@@ -84,12 +84,12 @@ model_native_transform = m['model'].get_native_transform()
 dataloader_train       = m['dataloader'].get_dataloader(args, model_native_transform, 'train')
 dataloader_val         = m['dataloader'].get_dataloader(args, model_native_transform, 'val')
 
-# Load model 
-model = m['model'].get_net(args, dataloader_train)
-
 # Load criterion
 if args.criterion != "": 
     criterion = criterions.get_criterion(args.criterion, args).to(args.device)
+
+# Load model 
+model = m['model'].get_net(args, dataloader_train, criterion)
 
 # Load optimizer and scheduler
 optimizer = get_optimizer(args, model)
