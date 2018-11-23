@@ -325,3 +325,24 @@ def dice_loss(preds, trues, weight=None, is_average=False):
 
     return scores.mean()
         
+
+class NLL_OHEM(_Loss):                                                     
+    """ Online hard example mining. 
+    Needs input from nn.LogSotmax() """                                             
+                                                                                   
+    def __init__(self, threshold=0.22):      
+        super(NLL_OHEM, self).__init__(None, True)                                 
+        self.threshold = threshold                                                         
+        self.loss = nn.CrossEntropyLoss(reduction='none')   
+
+    def forward(self, x, y):                                           
+        # if ratio is not None:                                                      
+        #     self.ratio = ratio  
+
+
+        losses = self.loss(x[0], y[0])
+
+        mask = losses > self.threshold 
+
+        # print(losses[mask].shape)
+        return losses[mask].mean()
