@@ -325,3 +325,74 @@ def dice_loss(preds, trues, weight=None, is_average=False):
 
     return scores.mean()
         
+
+
+import torch as th                                                                 
+                                                                                
+class MultiHeadCriterion(_Loss):
+    '''
+        For a number of "1-of-K" tasks. 
+
+    '''
+    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
+        super(MultiHeadCriterion, self).__init__(size_average, reduce, reduction)
+
+    def forward(self, input, target):
+        '''
+            let N be a number of different tasks 
+
+            `target` is a list of size N, where each element is either a vector of size `B` (then is is multi-class task)
+                or of size `B` x P_i, where P_i is the number of labels (in multi-label task e.g. tagging)
+
+            `target` is a list of size N, where each element is of size B x P_i for i = 1 ... N
+        '''
+
+        losses = []
+        for inp, tar in zip(input, target):
+            if tar is None:
+                continue
+
+            if len(tar.shape) == 1 or tar.shape[1] == 1:
+                loss = nn.CrossEntropyLoss()
+                losses.append(loss(inp, tar))
+            elif tar.shape[1] == inp.shape[1]:
+                loss = nn.BCEWithLogitsLoss()
+
+                losses.append(loss(inp, tar))
+
+        loss = sum(losses) / len(losses)
+
+        return loss
+
+class NLL_OHEM(_Loss):                                                     
+    """ Online hard example mining. 
+    Needs input from nn.LogSotmax() """                                             
+                                                                                   
+    def __init__(self, threshold):      
+        super(NLL_OHEM, self).__init__(None, True)                                 
+        self.threshold = threshold                                                         
+        self.loss = nn.CrossEntropyLoss(reduction='none')   
+
+    def forward(self, x, y, ratio=None):                                           
+        if ratio is not None:                                                      
+            self.ratio = ratio  
+
+
+        losses = self.loss(x, y)
+
+        mask = losses > self.threshold 
+
+        print(losses[mask].shape)
+        return [losses[mask].mean()]
+        
+        # num_inst = x.size(0)                                                       
+        # num_hns = int(self.ratio * num_inst)                                       
+        # x_ = x.clone()                                                             
+        # inst_losses = th.autograd.Variable(th.zeros(num_inst)).cuda()              
+        # for idx, label in enumerate(y.data):                                       
+        #     inst_losses[idx] = -x_.data[idx, label]                                 
+        # #loss_incs = -x_.sum(1)                                                    
+        # _, idxs = inst_losses.topk(num_hns)                                        
+        # x_hn = x.index_select(0, idxs)                                             
+        # y_hn = y.index_select(0, idxs)                                             
+        # return th.nn.functional.nll_loss(x_hn, y_hn) 
