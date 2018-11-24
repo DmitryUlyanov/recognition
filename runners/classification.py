@@ -1,3 +1,4 @@
+import gc
 import os.path
 import time
 import torch
@@ -135,7 +136,7 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
             break 
                 
     saver.stop()  
-
+    gc.collect()
     print(f' * \n'
           f' * Epoch {epoch} {red(part.capitalize())}:\t'
           f'Loss {loss_meter.avg:.4f}\t'
@@ -147,7 +148,7 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
         writer.add_scalar(f'Metrics/{part}/acc',    acc_meter.avg,   data['last_it'])
         writer.add_scalar(f'Metrics/{part}/MAP@3',  topk_meter.avg,  data['last_it'])
 
-    return loss_meter.avg
+    return -topk_meter.avg
 
 
 def npz_per_item(data, path, args):
@@ -194,6 +195,10 @@ def npz_per_batch(data, save_dir, args, iteration):
     path = f'{save_dir}/{iteration}.npz'
 
     np.savez_compressed(path, **data)
+
+    data=None
+    
+    gc.collect()
 
 
 class Saver(object):
