@@ -11,6 +11,7 @@ from utils.task_queue import TaskQueue
 
 def get_args(parser):
     parser.add('--use_mixup',  default=False, action='store_true')
+    parser.add('--dump_loss',  default=False, action='store_true')
     parser.add('--mixup_alpha', type=float, default=0.1)
 
     parser.add('--print_frequency', type=int, default=50)
@@ -109,7 +110,12 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
 
         topk = MAPk(3)(output[0], y[0])
 
-        saver.maybe_save(iteration=it, x=x_, y=y_, output=output, names=names)
+        if args.dump_loss:
+            losses = nn.CrossEntropyLoss(reduction='none')(output[0], y[0])
+            saver.maybe_save(iteration=it, names=names, losses=losses)
+
+        else:
+            saver.maybe_save(iteration=it, x=x_, y=y_, output=output, names=names)
 
         # Logging 
         loss_meter.update(loss.item(), x.shape[0])
@@ -134,9 +140,11 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
 
         if args.niter_in_epoch > 0 and it % args.niter_in_epoch == 0 and it > 0:
             break 
+
+        gc.collect()
                 
     saver.stop()  
-    gc.collect()
+
     print(f' * \n'
           f' * Epoch {epoch} {red(part.capitalize())}:\t'
           f'Loss {loss_meter.avg:.4f}\t'
@@ -203,7 +211,7 @@ def npz_per_batch(data, save_dir, args, iteration):
 
 class Saver(object):
     
-    def __init__(self, args, save_fn, tq_maxsize = 5, clean_dir=True):
+    def __init__(self, args, save_fn, tq_maxsize = 5, clean_dir=True, num_workers=5):
         super(Saver, self).__init__()
         self.args = args
 
@@ -211,14 +219,14 @@ class Saver(object):
         self.need_save = False
         if 'save_driver' in args and args.save_driver is not None:
             
-
+            # print('-----------------')
             if clean_dir and os.path.exists(args.dump_path):
                 import shutil
                 shutil.rmtree(args.dump_path) 
 
             os.makedirs(args.dump_path, exist_ok=True)
 
-            self.tq = TaskQueue(maxsize=args.batch_size * 2, num_workers=5, verbosity=0) 
+            self.tq = TaskQueue(maxsize=args.batch_size * 2, num_workers=num_workers, verbosity=0) 
 
             self.save_fn = save_fn
             self.need_save = True
