@@ -98,7 +98,7 @@ model = m['model'].get_net(args, dataloader_train, criterion)
 
 # Load optimizer and scheduler
 optimizer = get_optimizer(args, model)
-scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args.patience, factor=args.lr_reduce_factor, verbose=True)
+scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args.patience, factor=args.lr_reduce_factor, verbose=True, min_lr=1e-6)
 
 # Dump args
 save_yaml(vars(args), f'{args.experiment_dir}/args_modified.yaml')

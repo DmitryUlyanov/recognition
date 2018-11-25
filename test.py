@@ -24,7 +24,7 @@ parser.add('--experiment_dir', type=str, default="", help='manual seed')
 # parser.add('--runner', type=str, default="", help='')
 # parser.add('--extension', type=str, default="", help='manual seed')
 
-# parser.add('--random_seed', type=int, default=123, help='manual seed')
+parser.add('--random_seed', type=int, default=123, help='manual seed')
 
 # parser.add('--experiments_dir', type=str, default="experiments", help='')
 parser.add('--part', type=str, default='val', help='test|val|train')

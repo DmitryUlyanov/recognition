@@ -149,6 +149,7 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
           f' * Epoch {epoch} {red(part.capitalize())}:\t'
           f'Loss {loss_meter.avg:.4f}\t'
           f'Acc  {acc_meter.avg:.4f}\t'
+          f'MAP@3  {topk_meter.avg:.4f}\t'
           f' *\t\n')
 
     if part != 'train':
