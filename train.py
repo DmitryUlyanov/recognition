@@ -12,7 +12,7 @@ from huepy import yellow
 
 import models.criterions as criterions
 import json
-from utils.utils import setup, get_optimizer, get_args_and_modules
+from utils.utils import setup, get_optimizer, get_args_and_modules, get_scheduler
 from utils.io_utils import save_yaml
 from exp_logger import setup_logging
 
@@ -95,7 +95,9 @@ model = m['model'].get_net(args, dataloader_train, criterion)
 
 # Load optimizer and scheduler
 optimizer = get_optimizer(args, model)
-scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args.patience, factor=args.lr_reduce_factor, verbose=True, min_lr=1e-6)
+
+scheduler = get_scheduler(args, optimizer)
+# scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args.patience, factor=args.lr_reduce_factor, verbose=True, min_lr=1e-6)
 
 # Dump args
 save_yaml(vars(args), f'{args.experiment_dir}/args_modified.yaml')
