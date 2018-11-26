@@ -106,7 +106,7 @@ print('ensemble:', map3(torch.from_numpy(ensemble), torch.from_numpy(labels)).it
 # print(labels.shape, names.shape)    
 
 
-# np.savez_compressed(args.save_path + '.npz', preds=preds, names=names, classes=mp)  
+np.savez_compressed(args.save_path + '.npz', preds=ensemble, names=names, classes=mp)  
 ans = pd.DataFrame(np.argsort(ensemble, 1)[:, -3:][:, ::-1], columns=[1, 2, 3])
 ans['key_id'] = names
 
