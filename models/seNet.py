@@ -18,7 +18,7 @@ from models.criterions import MultiHeadCriterion
 import torchvision.transforms as transforms
 from models.common import NoParam, MultiHead
 from huepy import yellow 
-
+import sys
 
 __all__ = ['SENet', 'senet154', 'se_resnet50', 'se_resnet101', 'se_resnet152',
            'se_resnext50_32x4d', 'se_resnext101_32x4d']
@@ -37,6 +37,8 @@ __all__ = ['SENet', 'senet154', 'se_resnet50', 'se_resnet101', 'se_resnet152',
 def get_args(parser):
     parser.add('--dropout_p',     type=float,  default=0.5)
     parser.add('--num_classes',   type=str,    default="")
+    parser.add('--arch',   type=str,    default="")
+
 
     return parser
 
@@ -48,7 +50,8 @@ def get_net(args):
     if load_pretrained:
         print(yellow('Loading a net, pretrained on ImageNet1k.'))
 
-    model = senet154(num_classes=1000, pretrained='imagenet' if load_pretrained else None)
+
+    model = sys.modules[__name__].__dict__[args.arch](num_classes=1000, pretrained='imagenet' if load_pretrained else None)
 
     num_classes = [int(x) for x in args.num_classes.split(',')]
 

@@ -115,7 +115,7 @@ def get_abstract_native_transform(get_native_transform):
 
     return wrapper
 
-def save_model(model, epoch, args):
+def save_model(model, epoch, args, optimizer=None):
     
     model_to_save = model
     if isinstance(model, torch.nn.DataParallel):
@@ -126,7 +126,8 @@ def save_model(model, epoch, args):
 
     dict_to_save = { 
         'state_dict': model_to_save.state_dict(), 
-        'args': args
+        'args': args,
+        'optimizer': optimizer.state_dict() if optimizer is not None else None
     }
     save_path = f'{args.experiment_dir}/checkpoints/model_{epoch}.pth'
 

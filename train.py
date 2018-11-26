@@ -15,7 +15,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 import models.criterions as criterions
 import json
-from utils.utils import setup, get_optimizer, get_args_and_modules
+from utils.utils import setup, get_optimizer, get_args_and_modules, get_scheduler
 from utils.io_utils import save_yaml
 from exp_logger import setup_logging
 
@@ -43,13 +43,18 @@ parser.add('--comment', type=str, default='', help='Just any type of comment')
 parser.add('--optimizer', type=str, default='SGD', help='Just any type of comment')
 parser.add('--optimizer_args', default="lr=3e-3^momentum=0.9", type=str, help='separated with "^" list of args i.e. "lr=1e-3^betas=(0.5,0.9)"')
 
+
+parser.add('--scheduler', type=str, default='ReduceLROnPlateau', help='Just any type of comment')
+parser.add('--scheduler_args', default="factor=0.5^min_lr=1e-6^verbose=True^patience=0", type=str, help='separated with "^" list of args i.e. "lr=1e-3^betas=(0.5,0.9)"')
+
+
 parser.add('--criterion_args', default="", type=str, help='separated with "^" list of args i.e. "lr=1e-3^betas=(0.5,0.9)"')
 
 
 parser.add('--num_epochs', type=int, default=200)
 
-parser.add('--patience',         type=int, default=5)
-parser.add('--lr_reduce_factor', type=float, default=0.3)
+# parser.add('--patience',         type=int, default=5)
+# parser.add('--lr_reduce_factor', type=float, default=0.3)
 
 parser.add('--logging', default=True, action="store_bool")
 parser.add('--args-to-ignore', type=str, default="checkpoint,splits_dir,experiments_dir,extension")
@@ -98,7 +103,9 @@ model = m['model'].get_net(args, dataloader_train, criterion)
 
 # Load optimizer and scheduler
 optimizer = get_optimizer(args, model)
-scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args.patience, factor=args.lr_reduce_factor, verbose=True, min_lr=1e-6)
+
+scheduler = get_scheduler(args, optimizer)
+# scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args.patience, factor=args.lr_reduce_factor, verbose=True, min_lr=1e-6)
 
 # Dump args
 save_yaml(vars(args), f'{args.experiment_dir}/args_modified.yaml')

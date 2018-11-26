@@ -56,6 +56,19 @@ def get_optimizer(args, model):
     
     return optimizer
 
+def get_scheduler(args, optimizer):
+    # Parse parameters
+    
+    # args.scheduler_args.
+    scheduler_args = {}
+    for entry in args.scheduler_args.split("^"):
+        k, v = entry.split('=')
+        scheduler_args[k] = eval(v)
+ 
+    scheduler = utils.optimizers.get_scheduler(args.scheduler)(optimizer, **scheduler_args)
+    print(scheduler)
+    return scheduler
+
 
 def get_args_and_modules(parser, phase='train'):
     '''
