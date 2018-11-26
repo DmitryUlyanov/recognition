@@ -48,7 +48,7 @@ def get_net(args):
     if load_pretrained:
         print(yellow('Loading a net, pretrained on ImageNet1k.'))
 
-    model = senet154(num_classes=1000, pretrained='imagenet' if load_pretrained else None)
+    model = se_resnet50(num_classes=1000, pretrained='imagenet' if load_pretrained else None)
 
     num_classes = [int(x) for x in args.num_classes.split(',')]
 
