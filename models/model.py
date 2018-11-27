@@ -18,6 +18,9 @@ def get_model_args(get_args):
         parser.add('--freeze_bn', default=False, action='store_bool')
         parser.add('--merge_model_and_loss', default=False, action='store_bool')
 
+        parser.add('--checkpoint_strict_load_state',   default=True, action='store_bool')
+        parser.add('--checkpoint_load_only_extractor', default=False, action='store_bool')
+
         return get_args(parser)
 
     return wrapper
@@ -55,7 +58,10 @@ def get_abstract_net(get_net):
             if isinstance(state_dict, dict): 
                 state_dict = state_dict['state_dict']
             
-            model.load_state_dict(state_dict)
+            if args.checkpoint_load_only_extractor:
+                state_dict = {k: v for k, v in state_dict.items() if not k.startswith('predictor')}
+
+            model.load_state_dict(state_dict, strict=args.checkpoint_strict_load_state)
         
         
         if hasattr(model, 'feature_extractor'):

@@ -7,6 +7,9 @@ from tensorboardX import SummaryWriter
 from models.model import save_model
 from huepy import yellow 
 
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
+
 # if __name__ == '__main__':
     # torch.multiprocessing.set_start_method("forkserver")
 

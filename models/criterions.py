@@ -1,12 +1,12 @@
 from tqdm import tqdm
-from huepy import red 
+from huepy import red
 import numpy as np
 import torch
 
 from torch import nn
 import torch.nn.functional as fnn
 from torch.nn.modules.loss import _Loss
-import sys 
+import sys
 import torch.nn.functional as F
 # import encoding.nn
 
@@ -325,6 +325,9 @@ def dice_loss(preds, trues, weight=None, is_average=False):
 
     return scores.mean()
         
+
+
+import torch as th                                                                 
 
 class NLL_OHEM(_Loss):                                                     
     """ Online hard example mining. 
