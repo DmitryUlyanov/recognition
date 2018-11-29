@@ -18,8 +18,35 @@ import json
 from utils.utils import setup, get_optimizer, get_args_and_modules, get_scheduler
 from utils.io_utils import save_yaml
 from exp_logger import setup_logging
+import signal
+import time
+import sys
+# from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+
+
+def exit_gracefully(signum, frame):
+    # restore the original signal handler as otherwise evil things will happen
+    # in raw_input when CTRL+C is pressed, and our signal handler is not re-entrant
+    signal.signal(signal.SIGINT, original_sigint)
+
+    try:
+        if input("\nReally quit? (y/n)> ").lower().startswith('y'):
+            sys.exit(1)
+
+    except KeyboardInterrupt:
+        print("Ok ok, quitting")
+        sys.exit(1)
+
+    # restore the exit gracefully handler here    
+    signal.signal(signal.SIGINT, exit_gracefully)
+
+
+
+original_sigint = signal.getsignal(signal.SIGINT)
+signal.signal(signal.SIGINT, exit_gracefully)
+
+
 
 
 # Define main args
@@ -61,6 +88,9 @@ parser.add('--args-to-ignore', type=str, default="checkpoint,splits_dir,experime
 
 parser.add('--set_eval_mode_in_train', action='store_bool', default=False)
 parser.add('--set_eval_mode_in_test', action='store_bool', default=True)
+
+parser.add('--need_pretrain', action='store_bool', default=False)
+
 parser.add('--device', type=str, default='cuda')
 
 
@@ -72,6 +102,15 @@ parser.add('--set_eval_mode_epoch', default=-1, type=int)
 
 # Gather args across modules
 args, default_args, m = get_args_and_modules(parser)
+
+# NUM CLASSES
+with open(args.data_path + '/groups_to_run.json') as f:
+    groups_to_run = json.load(f)
+
+group_len = groups_to_run[args.group_num][1]
+args.num_classes = str(group_len + 1)
+print(args.num_classes)
+################
 
 # Setup logging and creates save dir
 if args.logging:
@@ -114,6 +153,55 @@ args.get_dataloader = m['dataloader'].get_dataloader
 m['runner'].run_epoch.writer = writer
 
 
+
+
+def set_param_grad(model, value, set_eval_mode=True):
+    for param in model.parameters():
+        param.requires_grad = value
+    
+    if set_eval_mode:
+        model.eval()
+
+
+if args.need_pretrain:
+    
+    # Load optimizer and scheduler
+    # args.fix_feature_extractor = True
+    set_param_grad(model.module.feature_extractor, False, False)
+    optimizer = get_optimizer(args, model)
+
+    scheduler = get_scheduler(args, optimizer)
+
+
+    # Stage1
+    torch.set_grad_enabled(True)
+    m['runner'].run_epoch(dataloader_train, model, criterion, optimizer, -1, args, part='train')
+    
+    # Validate
+    if args.set_eval_mode_in_test:
+        model.eval()
+    else:
+        model.train()
+
+    torch.set_grad_enabled(False)
+    val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, -1, args, part='val')
+
+    save_model(model, -1, args)
+
+
+
+    # Stage 2 
+
+    set_param_grad(model, True, set_eval_mode=False)
+    # Load optimizer and scheduler
+    optimizer = get_optimizer(args, model)
+    scheduler = get_scheduler(args, optimizer)
+
+
+
+
+
+
 for epoch in range(0, args.num_epochs):
     if args.set_eval_mode_in_train or (args.set_eval_mode_epoch >= 0 and epoch>=args.set_eval_mode_epoch):
         print(yellow(f' - Setting eval mode!'))
@@ -140,4 +228,4 @@ for epoch in range(0, args.num_epochs):
     # Save
 
     if epoch % args.save_frequency == 0:
-        save_model(model, epoch, args)
+        save_model(model, epoch, args, optimizer)
