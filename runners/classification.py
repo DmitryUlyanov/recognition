@@ -68,7 +68,8 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
     
     if part=='train':
         optimizer.zero_grad()
-        dataloader = args.get_dataloader(args, None, 'train')
+        if args.num_folds_train < 245:
+            dataloader = args.get_dataloader(args, None, 'train')
 
     for it, (names, x_, *y_) in enumerate(dataloader):
         
