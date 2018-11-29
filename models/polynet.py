@@ -526,8 +526,8 @@ def polynet(num_classes=1000, pretrained='imagenet'):
             'num_classes should be {}, but is {}'.format(
                 settings['num_classes'], num_classes)
         model = PolyNet(num_classes=num_classes)
-        # model.load_state_dict(model_zoo.load_url(settings['url']))
-        model.load_state_dict('/home/dulyanov/.torch/models/polynet-f71d82a5.pth')
+        model.load_state_dict(model_zoo.load_url(settings['url']))
+        # model.load_state_dict('/home/dulyanov/.torch/models/polynet-f71d82a5.pth')
         model.input_space = settings['input_space']
         model.input_size = settings['input_size']
         model.input_range = settings['input_range']
