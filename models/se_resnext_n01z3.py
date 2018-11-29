@@ -28,7 +28,7 @@ from .se_module import SEBlock
 
 @get_model_args
 def get_args(parser):
-    parser.add('--dropout_p',     type=float,  default=0.5,)
+    parser.add('--dropout_p',     type=float,  default=0.5)
     parser.add('--num_classes',   type=str,    default="")
 
     return parser
@@ -41,8 +41,31 @@ def get_net(args):
     if load_pretrained:
         print(yellow('Loading a net, pretrained on ImageNet1k.'))
 
+    model = SE_ResNeXt101FT(num_classes = 340, pretrained=load_pretrained)
     
-    return SE_ResNeXt101FT(num_classes = int(args.num_classes), pretrained=load_pretrained)
+    if not args.load_only_extractor: 
+        return model
+
+
+    model.load_state_dict(torch.load('extensions/qd/data/experiments/se_resnext_n01z3/checkpoints/se_resnext101_n.pth')['state_dict'])
+
+
+        # Extractor
+    feature_extractor = model.features
+     
+    # Construct
+   
+
+
+    num_classes = [int(x) for x in args.num_classes.split(',')]
+
+    predictor = nn.Sequential( nn.Dropout(args.dropout_p), MultiHead(in_features = 2048, num_classes=num_classes))
+        
+    model = BaseModel(feature_extractor, predictor)
+
+    
+    return model
+
 
 
 
