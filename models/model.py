@@ -18,6 +18,8 @@ def get_model_args(get_args):
         parser.add('--freeze_bn', default=False, action='store_bool')
         parser.add('--merge_model_and_loss', default=False, action='store_bool')
 
+        parser.add('--bn_momentum', default=0.9, type=float)
+
         parser.add('--checkpoint_strict_load_state',   default=True, action='store_bool')
         parser.add('--checkpoint_load_only_extractor', default=False, action='store_bool')
 
@@ -34,7 +36,7 @@ def get_abstract_net(get_net):
 
 
         if args.net_init == 'lsuv' and args.checkpoint == '':
-            data = iter(dataloader_train).next()[1].to(args.device)
+            data = iter(train_dataloader).next()['input'].to(args.device)
 
             if args.lsuv_batch_size > 0:
                 data = data[:args.lsuv_batch_size]
@@ -60,6 +62,25 @@ def get_abstract_net(get_net):
             
             if args.checkpoint_load_only_extractor:
                 state_dict = {k: v for k, v in state_dict.items() if not k.startswith('predictor')}
+
+            # k = state_dict.keys()
+            # print('===============', k, [x for x in k if 'bn' in x])
+            # for ff in [x for x in k if 'running_var' in x]:
+            #     del state_dict[ff]
+            import numpy as np
+            if state_dict['feature_extractor.0.weight'].shape[1] != args.num_input_channels:
+                print('Surgery ==============')
+                t = torch.zeros( (state_dict['feature_extractor.0.weight'].shape[0], args.num_input_channels, state_dict['feature_extractor.0.weight'].shape[2], state_dict['feature_extractor.0.weight'].shape[3]), dtype=torch.float)
+
+                for i in range(int(args.num_input_channels / 3)):
+                    t[:, i * 3: (i + 1) * 3] = state_dict['feature_extractor.0.weight'] / (int(args.num_input_channels / 3))
+
+                if args.num_input_channels % 3 > 0: 
+                    t[:, - (args.num_input_channels % 3) : ] = state_dict['feature_extractor.0.weight'][:, -(args.num_input_channels % 3) :]
+
+
+                state_dict['feature_extractor.0.weight'] = t
+
 
             model.load_state_dict(state_dict, strict=args.checkpoint_strict_load_state)
         
@@ -99,6 +120,18 @@ def get_abstract_net(get_net):
             # encoding.parallel.DataParallel(model)
 
 
+        def freeze_bn1(m):
+            if isinstance(m, torch.nn.BatchNorm2d):
+
+                m.momentum = args.bn_momentum
+                
+                # def nop(*args, **kwargs):
+                #     pass
+
+                # m.train = nop
+
+        model.apply(freeze_bn1)
+
 
         return model
 
@@ -127,7 +160,7 @@ def save_model(model, epoch, args, optimizer=None):
     dict_to_save = { 
         'state_dict': model_to_save.state_dict(), 
         'args': args,
-        'optimizer': optimizer.state_dict() if optimizer is not None else None
+        #'optimizer': optimizer.state_dict() if optimizer is not None else None
     }
     save_path = f'{args.experiment_dir}/checkpoints/model_{epoch}.pth'
 
@@ -144,7 +177,7 @@ class BaseModel(torch.nn.Module):
 
     def forward(self, input):
         x = self.feature_extractor(input)
-        
+
         x = self.pool(x)
         x = x.view(x.size(0), -1)
         

@@ -1,6 +1,7 @@
 from huepy import cyan
 import torch 
 import torchvision.utils 
+import numpy as  np 
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -19,6 +20,29 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+class AccumulatedMetric(object):
+    """Computes and stores the average and current value"""
+
+    def __init__(self, metric_fn):
+        self.metric_fn = metric_fn
+        self.saved_targets = None
+        self.saved_preds = None
+
+        self.val = 0
+        self.avg = 0
+
+    def update(self, preds, target):
+
+        if self.saved_preds is None:
+            self.saved_targets = target
+            self.saved_preds = preds
+        else:
+            self.saved_targets = torch.cat([self.saved_targets, target], 0)
+            self.saved_preds = torch.cat([self.saved_preds, preds], 0)
+
+        self.val = self.metric_fn(preds, target)
+        self.avg = self.metric_fn(self.saved_preds, self.saved_targets)
 
 
 def accuracy(output, target):

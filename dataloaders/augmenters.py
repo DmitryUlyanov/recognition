@@ -7,10 +7,15 @@ import imgaug as ia
 
 from imgaug import augmenters as iaa
 from imgaug.augmenters import Augmenter
-
+import imgaug.parameters as iap
+from functools import partial
+import torch
 
 sometimes = lambda aug: iaa.Sometimes(0.4, aug)
 often = lambda aug: iaa.Sometimes(0.8, aug)
+
+
+
 
 
 class ImgAugTransform(object):
@@ -20,8 +25,11 @@ class ImgAugTransform(object):
         self.color_transform = color_transform if color_transform is not None else Identity
         
     def __call__(self, imgs, masks=[]):
+        
+        one = False
         if not isinstance(imgs, list):
-            assert False
+            one = True
+            imgs = [imgs]
 
         pil = False
         if isinstance(imgs[0], Image.Image):
@@ -46,6 +54,12 @@ class ImgAugTransform(object):
         if pil:
             imgs =  [Image.fromarray(x) for x in imgs]
             masks = [Image.fromarray(x) for x in masks]
+
+        if len(masks) == 0:
+            if one:
+                return imgs[0]
+            
+            return imgs
 
         return imgs, masks 
 
@@ -220,3 +234,143 @@ def pad_or_crop(img, target_height, target_width, border_mode=cv2.BORDER_REFLECT
 
 
     
+class Rot90(Augmenter):
+    """
+    Augmenter to rotate images by multiples of 90 degrees.
+    This could also be achieved using ``Affine``, but Rot90 is significantly more efficient.
+    Parameters
+    ----------
+    k : int or list of int or tuple of int or imaug.ALL or imgaug.parameters.StochasticParameter, optional
+        How often to rotate by 90 degrees.
+            * If a single int, then that value will be used for all images.
+            * If a tuple ``(a, b)``, then a random value from the discrete
+              range ``a <= x <= b`` is picked per image.
+            * If a list, then for each image a random value will be sampled
+              from that list.
+            * If imgaug.ALL, then equivalant to list ``[0, 1, 2, 3]``.
+            * If StochasticParameter, then that parameter is queried per image
+              to sample the value to use.
+    keep_size : bool, optional
+        After rotation by an odd-valued `k` (e.g. 1 or 3), the resulting image
+        may have a different height/width than the original image.
+        If this parameter is set to True, then the rotated
+        image will be resized to the input image's size. Note that this might also
+        cause the augmented image to look distorted.
+    name : None or str, optional
+        See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
+    deterministic : bool, optional
+        See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
+    random_state : None or int or numpy.random.RandomState, optional
+        See :func:`imgaug.augmenters.meta.Augmenter.__init__`.
+    Examples
+    --------
+    >>> aug = iaa.Rot90(1)
+    Rotates all images by 90 degrees.
+    Resizes all images afterwards to keep the size that they had before augmentation.
+    This may cause the images to look distorted.
+    >>> aug = iaa.Rot90([1, 3])
+    Rotates all images by 90 or 270 degrees.
+    Resizes all images afterwards to keep the size that they had before augmentation.
+    This may cause the images to look distorted.
+    >>> aug = iaa.Rot90((1, 3))
+    Rotates all images by 90, 180 or 270 degrees.
+    Resizes all images afterwards to keep the size that they had before augmentation.
+    This may cause the images to look distorted.
+    >>> aug = iaa.Rot90((1, 3), keep_size=False)
+    Rotates all images by 90, 180 or 270 degrees.
+    Does not resize to the original image size afterwards, i.e. each image's size may change.
+    """
+
+    def __init__(self, k, keep_size=True, name=None, deterministic=False, random_state=None):
+        super(Rot90, self).__init__(name=name, deterministic=deterministic, random_state=random_state)
+        self.k = iap.handle_discrete_param(k, "k", value_range=None, tuple_to_uniform=True, list_to_choice=True,
+                                           allow_floats=False)
+        self.keep_size = keep_size
+
+    def _draw_samples(self, nb_images, random_state):
+        return self.k.draw_samples((nb_images,), random_state=random_state)
+
+    def _augment_arrays(self, arrs, random_state, resize_func):
+        ks = self._draw_samples(len(arrs), random_state)
+        return self._augment_arrays_by_samples(arrs, ks, self.keep_size, resize_func), ks
+
+    @classmethod
+    def _augment_arrays_by_samples(cls, arrs, ks, keep_size, resize_func):
+        input_was_array = ia.is_np_array(arrs)
+        input_dtype = arrs.dtype if input_was_array else None
+        arrs_aug = []
+        for arr, k_i in zip(arrs, ks):
+            arr_aug = np.rot90(arr, k_i)
+            if keep_size and arr.shape != arr_aug.shape and resize_func is not None:
+                arr_aug = resize_func(arr_aug, arr.shape[0:2])
+            arrs_aug.append(arr_aug)
+        if keep_size and input_was_array:
+            n_shapes = len(set([arr.shape for arr in arrs_aug]))
+            if n_shapes == 1:
+                arrs_aug = np.array(arrs_aug, dtype=input_dtype)
+        return arrs_aug
+
+    def _augment_images(self, images, random_state, parents, hooks):
+        resize_func = partial(ia.imresize_single_image, interpolation="cubic")
+        images_aug, _ = self._augment_arrays(images, random_state, resize_func)
+        return images_aug
+
+    def _augment_heatmaps(self, heatmaps, random_state, parents, hooks):
+        arrs = [heatmaps_i.arr_0to1 for heatmaps_i in heatmaps]
+        arrs_aug, ks = self._augment_arrays(arrs, random_state, None)
+        heatmaps_aug = []
+        for heatmaps_i, arr_aug, k_i in zip(heatmaps, arrs_aug, ks):
+            shape_orig = heatmaps_i.arr_0to1.shape
+            heatmaps_i.arr_0to1 = arr_aug
+            if self.keep_size:
+                heatmaps_i = heatmaps_i.scale(shape_orig[0:2])
+            elif k_i % 2 == 1:
+                h, w = heatmaps_i.shape[0:2]
+                heatmaps_i.shape = tuple([w, h] + list(heatmaps_i.shape[2:]))
+            else:
+                # keep_size was False, but rotated by a multiple of 2, hence height and width do not change
+                pass
+            heatmaps_aug.append(heatmaps_i)
+        return heatmaps_aug
+
+    def _augment_keypoints(self, keypoints_on_images, random_state, parents, hooks):
+        nb_images = len(keypoints_on_images)
+        ks = self._draw_samples(nb_images, random_state)
+        result = []
+        for kpsoi_i, k_i in zip(keypoints_on_images, ks):
+            if (k_i % 4) == 0:
+                result.append(kpsoi_i)
+            else:
+                k_i = k_i % 4  # this is also correct when k_i is negative
+                kps_aug = []
+                h, w = kpsoi_i.shape[0:2]
+                h_aug, w_aug = (h, w) if (k_i % 2) == 0 else (w, h)
+                for kp in kpsoi_i.keypoints:
+                    y, x = kp.y, kp.x
+                    y_diff = abs(h - y)
+                    x_diff = abs(w - x)
+                    if k_i == 1:
+                        # (W-yd, xd)
+                        x_aug = w_aug - y_diff
+                        y_aug = x_diff
+                    elif k_i == 2:
+                        # (xd, yd)
+                        x_aug = x_diff
+                        y_aug = y_diff
+                    else:  # k_i == 3
+                        # (yd, H-xd)
+                        x_aug = y_diff
+                        y_aug = h_aug - x_diff
+                    kps_aug.append(ia.Keypoint(x=x_aug, y=y_aug))
+
+                shape_aug = tuple([h_aug, w_aug] + list(kpsoi_i.shape[2:]))
+                kpsoi_i_aug = ia.KeypointsOnImage(kps_aug, shape=shape_aug)
+                if self.keep_size and (h, w) != (h_aug, w_aug):
+                    kpsoi_i_aug = kpsoi_i_aug.on(kpsoi_i.shape)
+                    kpsoi_i_aug.shape = kpsoi_i.shape
+
+                result.append(kpsoi_i_aug)
+        return result
+
+    def get_parameters(self):
+        return [self.k, self.keep_size]

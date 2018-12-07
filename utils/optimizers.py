@@ -1,10 +1,9 @@
-import torch
-if torch.__version__ not in ['0.3.1']:
-    import warnings
-    warnings.warn("Please check if AdamW has been implemented in pytorch %s" % torch.__version__, DeprecationWarning)
-
 import math
+import torch
 from torch.optim.optimizer import Optimizer
+
+from huepy import red
+import torch
 import sys
 
 def get_optimizer(name):
@@ -27,15 +26,10 @@ def get_scheduler(name):
 
 
 
-'''
-https://github.com/pytorch/pytorch/pull/4429/files
-https://github.com/pytorch/pytorch/pull/3740/files
-hope it will be merged into pytorch
-'''
 
 
 
-class AdamW(Optimizer):
+class AdamHD(Optimizer):
     """Implements Adam algorithm.
 
     It has been proposed in `Adam: A Method for Stochastic Optimization`_.
@@ -48,38 +42,22 @@ class AdamW(Optimizer):
             running averages of gradient and its square (default: (0.9, 0.999))
         eps (float, optional): term added to the denominator to improve
             numerical stability (default: 1e-8)
-        weight_decay (float, optional): weight decay using the method from
-            the paper `Fixing Weight Decay Regularization in Adam` (default: 0)
-        amsgrad (boolean, optional): whether to use the AMSGrad variant of this
-            algorithm from the paper `On the Convergence of Adam and Beyond`_
+        weight_decay (float, optional): weight decay (L2 penalty) (default: 0)
+        hypergrad_lr (float, optional): hypergradient learning rate for the online
+        tuning of the learning rate, introduced in the paper
+        `Online Learning Rate Adaptation with Hypergradient Descent`_
 
     .. _Adam\: A Method for Stochastic Optimization:
         https://arxiv.org/abs/1412.6980
-    .. _Fixing Weight Decay Regularization in Adam:
-        https://arxiv.org/abs/1711.05101
-    .. _On the Convergence of Adam and Beyond:
-        https://openreview.net/forum?id=ryQu7f-RZ
+    .. _Online Learning Rate Adaptation with Hypergradient Descent:
+        https://openreview.net/forum?id=BkrsAzWAb
     """
 
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
-                 weight_decay=0, amsgrad=True):
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
-        if not 0.0 <= eps:
-            raise ValueError("Invalid epsilon value: {}".format(eps))
-        if not 0.0 <= betas[0] < 1.0:
-            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
-        if not 0.0 <= betas[1] < 1.0:
-            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
+                 weight_decay=0, hypergrad_lr=1e-8):
         defaults = dict(lr=lr, betas=betas, eps=eps,
-                        weight_decay=weight_decay, amsgrad=amsgrad)
-        super().__init__(params, defaults)
-        self._initial_lr = lr
-
-    def __setstate__(self, state):
-        super().__setstate__(state)
-        for group in self.param_groups:
-            group.setdefault('amsgrad', False)
+                        weight_decay=weight_decay, hypergrad_lr=hypergrad_lr)
+        super(AdamHD, self).__init__(params, defaults)
 
     def step(self, closure=None):
         """Performs a single optimization step.
@@ -99,7 +77,6 @@ class AdamW(Optimizer):
                 grad = p.grad.data
                 if grad.is_sparse:
                     raise RuntimeError('Adam does not support sparse gradients, please consider SparseAdam instead')
-                amsgrad = group['amsgrad']
 
                 state = self.state[p]
 
@@ -110,37 +87,31 @@ class AdamW(Optimizer):
                     state['exp_avg'] = torch.zeros_like(p.data)
                     # Exponential moving average of squared gradient values
                     state['exp_avg_sq'] = torch.zeros_like(p.data)
-                    if amsgrad:
-                        # Maintains max of all exp. moving avg. of sq. grad. values
-                        state['max_exp_avg_sq'] = torch.zeros_like(p.data)
 
                 exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
-                if amsgrad:
-                    max_exp_avg_sq = state['max_exp_avg_sq']
                 beta1, beta2 = group['betas']
 
                 state['step'] += 1
 
+                if group['weight_decay'] != 0:
+                    grad = grad.add(group['weight_decay'], p.data)
+
+                if state['step'] > 1:
+                    prev_bias_correction1 = 1 - beta1 ** (state['step'] - 1)
+                    prev_bias_correction2 = 1 - beta2 ** (state['step'] - 1)
+                    # Hypergradient for Adam:
+                    h = torch.dot(grad.view(-1), torch.div(exp_avg, exp_avg_sq.sqrt().add_(group['eps'])).view(-1)) * math.sqrt(prev_bias_correction2) / prev_bias_correction1
+                    # Hypergradient descent of the learning rate:
+                    group['lr'] += group['hypergrad_lr'] * h
+
                 # Decay the first and second moment running average coefficient
                 exp_avg.mul_(beta1).add_(1 - beta1, grad)
                 exp_avg_sq.mul_(beta2).addcmul_(1 - beta2, grad, grad)
-                if amsgrad:
-                    # Maintains the maximum of all 2nd moment running avg. till now
-                    torch.max(max_exp_avg_sq, exp_avg_sq, out=max_exp_avg_sq)
-                    # Use the max. for normalizing running avg. of gradient
-                    denom = max_exp_avg_sq.sqrt().add_(group['eps'])
-                else:
-                    denom = exp_avg_sq.sqrt().add_(group['eps'])
+                denom = exp_avg_sq.sqrt().add_(group['eps'])
 
                 bias_correction1 = 1 - beta1 ** state['step']
                 bias_correction2 = 1 - beta2 ** state['step']
                 step_size = group['lr'] * math.sqrt(bias_correction2) / bias_correction1
-
-                if group['weight_decay'] != 0:
-                    #eta = group['lr'] / self._initial_lr # scheduler changes lr only
-                    #p.data.add_(-group['weight_decay'] * eta, p.data)
-                    w = group['weight_decay'] * group['lr']
-                    p.data.add_(-w, p.data)
 
                 p.data.addcdiv_(-step_size, exp_avg, denom)
 

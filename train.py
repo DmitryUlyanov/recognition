@@ -103,14 +103,6 @@ parser.add('--set_eval_mode_epoch', default=-1, type=int)
 # Gather args across modules
 args, default_args, m = get_args_and_modules(parser)
 
-# NUM CLASSES
-with open(args.data_path + '/groups_to_run.json') as f:
-    groups_to_run = json.load(f)
-
-group_len = groups_to_run[args.group_num][1]
-args.num_classes = str(group_len + 1)
-print(args.num_classes)
-################
 
 # Setup logging and creates save dir
 if args.logging:

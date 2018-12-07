@@ -22,6 +22,8 @@ from huepy import yellow
 
 # finetune with lr = 9e-3
 
+norm_layer = nn.InstanceNorm2d
+
 @get_model_args
 def get_args(parser):
     parser.add('--dropout_p',     type=float,  default=0.5,)
@@ -72,10 +74,10 @@ class BasicBlock(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None, use_cbam=False):
         super(BasicBlock, self).__init__()
         self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes)
+        self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes)
+        self.bn2 = norm_layer(planes)
         self.downsample = downsample
         self.stride = stride
 
@@ -111,12 +113,12 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None, use_cbam=False):
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
+        self.bn1 = norm_layer(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
                                padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
+        self.bn2 = norm_layer(planes)
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * 4)
+        self.bn3 = norm_layer(planes * 4)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -164,7 +166,7 @@ class ResNet(nn.Module):
         else:
             self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
 
-        self.bn1 = nn.BatchNorm2d(64)
+        self.bn1 = norm_layer(64)
         self.relu = nn.ReLU(inplace=True)
 
         if att_type=='BAM':
@@ -181,11 +183,11 @@ class ResNet(nn.Module):
 
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
-        init.kaiming_normal(self.fc.weight)
+        init.kaiming_normal_(self.fc.weight)
         for key in self.state_dict():
             if key.split('.')[-1]=="weight":
                 if "conv" in key:
-                    init.kaiming_normal(self.state_dict()[key], mode='fan_out')
+                    init.kaiming_normal_(self.state_dict()[key], mode='fan_out')
                 if "bn" in key:
                     if "SpatialGate" in key:
                         self.state_dict()[key][...] = 0
@@ -200,7 +202,7 @@ class ResNet(nn.Module):
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansion),
+                norm_layer(planes * block.expansion),
             )
 
         layers = []
@@ -263,13 +265,21 @@ def ResidualNet(network_type, depth, num_classes, att_type, pretrained=True):
             url = 'http://www.dropbox.com/s/bt6zty02h9ibufi/RESNET50_CBAM_new_name_wrap.pth'
             m = model_zoo.load_url(url)['state_dict']
             m = {k[len('module.'):]:v for k, v in m.items()}
-            model.load_state_dict(m)
+            
+            k = m.keys()
+            # print('===============', k, [x for x in k if 'bn' in x])
+            for ff in [x for x in k if 'running_var' in x]:
+                del m[ff]
+            for ff in [x for x in k if 'running_mean' in x]:
+                del m[ff]
+
+            model.load_state_dict(m, strict=False)
 
         if att_type == 'BAM':
             url = 'http://www.dropbox.com/s/esw0m8e3cjg7ex4/RESNET50_IMAGENET_BAM_best.pth.tar'
             m = model_zoo.load_url(url)['state_dict']
             m = {k[len('module.'):]:v for k, v in m.items()}
-            model.load_state_dict(m)
+            model.load_state_dict(m, strict=False)
 
     else:
         assert False, 'Pretrained only for depth 50'

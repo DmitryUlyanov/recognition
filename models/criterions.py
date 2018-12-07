@@ -123,10 +123,18 @@ class MultiHeadCriterion(_Loss):
         For a number of "1-of-K" tasks. 
 
     '''
-    def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
+    def __init__(self, weight=None, losses='auto', size_average=None, reduce=None, reduction='elementwise_mean'):
         super(MultiHeadCriterion, self).__init__(size_average, reduce, reduction)
+        
+        self.weight = weight
+        if weight is not None:
+            self.weight = weight.cuda()
 
-    def forward(self, input, target):
+        self.losses = losses
+        # if losses != 'auto': 
+
+
+    def forward(self, inputs, targets):
         '''
             let N be a number of different tasks 
 
@@ -136,24 +144,63 @@ class MultiHeadCriterion(_Loss):
             `target` is a list of size N, where each element is of size B x P_i for i = 1 ... N
         '''
 
-        losses = []
-        for inp, tar in zip(input, target):
-            if tar is None:
+        losses = {}
+        for i, (input, target) in enumerate(zip(inputs, targets)):
+            # print(inp.shape)
+            if target is None:
                 continue
 
-            if len(tar.shape) == 1 or tar.shape[1] == 1:
-                loss = nn.CrossEntropyLoss()
-                losses.append(loss(inp, tar))
-            elif tar.shape[1] == inp.shape[1]:
-                loss = nn.BCEWithLogitsLoss()
+            # print(tar.shape, inp.shape)
+            if (len(target.shape) == 1 or target.shape[1] == 1) and input.shape[1] > 1:
+                loss = nn.CrossEntropyLoss(weight=self.weight)
+                losses[i] = loss(input, target)
+            # elif tar.shape[1] == inp.shape[1]:
+            else: 
+                # print(tar.shape)
+                # loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor(0.00636))
+                # loss = nn.BCEWithLogitsLoss()
+                loss = nn.L1Loss()
 
-                losses.append(loss(inp, tar))
 
-        loss = sum(losses) / len(losses)
+                losses[i] = loss(input, target.float())
 
-        return loss
+        # loss = sum(losses) / len(losses)
+
+        return losses
 
 
+
+class CriterionList(_Loss):
+    def __init__(self, criterions=None, weights=None):
+        super(CriterionList, self).__init__()
+        
+        self.criterions = [
+            # LovaszSoftmaxFlat(),
+            nn.CrossEntropyLoss(), 
+            nn.L1Loss(),
+        ]
+
+        if weights is None:
+            self.weights = [1] * len(self.criterions)
+        else:
+            self.weights = weights
+
+    def forward(self, inputs, targets):
+
+        lens = [len(x) for x in [inputs, targets, self.weights, self.criterions]]
+
+        assert all([x == lens[0] for x in lens]), print(lens)
+        
+
+        losses = {}
+        for i, (input, target, weight, criterion) in enumerate(zip(inputs, targets, self.weights, self.criterions)):
+            
+            if target is None or weight == 0:
+                continue
+
+            losses[i] = criterion(input, target) * weight
+           
+        return losses
 
 
 
@@ -349,3 +396,57 @@ class NLL_OHEM(_Loss):
 
         # print(losses[mask].shape)
         return losses[mask].mean()
+
+
+#################################3
+
+
+def lovasz_grad(gt_sorted):
+    """
+    Computes gradient of the Lovasz extension w.r.t sorted errors
+    See Alg. 1 in paper
+    """
+    p = len(gt_sorted)
+    gts = gt_sorted.sum()
+    intersection = gts - gt_sorted.float().cumsum(0)
+    union = gts + (1 - gt_sorted).float().cumsum(0)
+    jaccard = 1. - intersection / union
+    if p > 1:  # cover 1-pixel case
+        jaccard[1:p] = jaccard[1:p] - jaccard[0:-1]
+    return jaccard
+
+
+class LovaszSoftmaxFlat(_Loss):                                                     
+    """ Online hard example mining. 
+    Needs input from nn.LogSotmax() """                                             
+                                                                                   
+    def __init__(self, threshold=0.22):      
+        super(LovaszSoftmaxFlat, self).__init__(None, True)                                 
+        self.threshold = threshold                                                         
+        # self.loss = nn.CrossEntropyLoss(reduction='none')   
+
+    def forward(self, x, y):   
+        return lovasz_softmax_flat(torch.softmax(x, 1), y)                                        
+
+
+def lovasz_softmax_flat(probas, labels, only_present=False):
+    """
+    Multi-class Lovasz-Softmax loss
+    probas: [P, C] Variable, class probabilities at each prediction (between 0 and 1)
+    labels: [P] Tensor, ground truth labels (between 0 and C - 1)
+    only_present: average only on classes present in ground truth
+    """
+    
+    C = probas.size(1)
+    losses = []
+    for c in range(C):
+        fg = (labels == c).float()  # foreground for class c
+        if only_present and fg.sum() == 0:
+            continue
+
+        errors = (fg - probas[:, c]).abs()
+        errors_sorted, perm = torch.sort(errors, 0, descending=True)
+        perm = perm.data
+        fg_sorted = fg[perm]
+        losses.append(torch.dot(errors_sorted, lovasz_grad(fg_sorted)))
+    return sum(losses)/len(losses)
