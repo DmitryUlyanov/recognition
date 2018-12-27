@@ -72,7 +72,7 @@ parser.add('--optimizer_args', default="lr=3e-3^momentum=0.9", type=str, help='s
 
 
 parser.add('--scheduler', type=str, default='ReduceLROnPlateau', help='Just any type of comment')
-parser.add('--scheduler_args', default="factor=0.5^min_lr=1e-6^verbose=True^patience=0", type=str, help='separated with "^" list of args i.e. "lr=1e-3^betas=(0.5,0.9)"')
+parser.add('--scheduler_args', default="factor=0.5^min_lr=1e-6^verbose=True^patience=3", type=str, help='separated with "^" list of args i.e. "lr=1e-3^betas=(0.5,0.9)"')
 
 
 parser.add('--criterion_args', default="", type=str, help='separated with "^" list of args i.e. "lr=1e-3^betas=(0.5,0.9)"')

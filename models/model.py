@@ -68,18 +68,18 @@ def get_abstract_net(get_net):
             # for ff in [x for x in k if 'running_var' in x]:
             #     del state_dict[ff]
             import numpy as np
-            if state_dict['feature_extractor.0.weight'].shape[1] != args.num_input_channels:
-                print('Surgery ==============')
-                t = torch.zeros( (state_dict['feature_extractor.0.weight'].shape[0], args.num_input_channels, state_dict['feature_extractor.0.weight'].shape[2], state_dict['feature_extractor.0.weight'].shape[3]), dtype=torch.float)
+            # if state_dict['feature_extractor.0.weight'].shape[1] != args.num_input_channels:
+            #     print('Surgery ==============')
+            #     t = torch.zeros( (state_dict['feature_extractor.0.weight'].shape[0], args.num_input_channels, state_dict['feature_extractor.0.weight'].shape[2], state_dict['feature_extractor.0.weight'].shape[3]), dtype=torch.float)
 
-                for i in range(int(args.num_input_channels / 3)):
-                    t[:, i * 3: (i + 1) * 3] = state_dict['feature_extractor.0.weight'] / (int(args.num_input_channels / 3))
+            #     for i in range(int(args.num_input_channels / 3)):
+            #         t[:, i * 3: (i + 1) * 3] = state_dict['feature_extractor.0.weight'] / (int(args.num_input_channels / 3))
 
-                if args.num_input_channels % 3 > 0: 
-                    t[:, - (args.num_input_channels % 3) : ] = state_dict['feature_extractor.0.weight'][:, -(args.num_input_channels % 3) :]
+            #     if args.num_input_channels % 3 > 0: 
+            #         t[:, - (args.num_input_channels % 3) : ] = state_dict['feature_extractor.0.weight'][:, -(args.num_input_channels % 3) :]
 
 
-                state_dict['feature_extractor.0.weight'] = t
+            #     state_dict['feature_extractor.0.weight'] = t
 
 
             model.load_state_dict(state_dict, strict=args.checkpoint_strict_load_state)

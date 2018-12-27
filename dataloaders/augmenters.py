@@ -186,7 +186,7 @@ transforms.Lambda.augment_image = lambda_augment_image
 
 
 def resize_cv2_(images, random_state, parents, hooks, resolution, interpolation):
-    return [cv2.resize(img, (resolution['width'], resolution['height']), interpolation=interpolation) for img in images]
+    return [cv2.resize(img, (resolution['width'], resolution['height']), interpolation=interpolation) if (img.shape[0] != resolution['height']) or (img.shape[1] != resolution['width']) else img  for img in images]
 
 def resize_cv2_kp(keypoints_on_images, random_state, parents, hooks):
     print('Not implemented')

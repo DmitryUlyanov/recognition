@@ -27,7 +27,7 @@ last_it = dict(train=0, val=0, test=0)
 def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'):
     batch_time = AverageMeter()
     data_time  = AverageMeter()
-    loss_meter     = AverageMeter()
+    loss_meter = AverageMeter()
                 
     writer = run_epoch.writer
     outputs = []
@@ -43,6 +43,7 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
         data_time.update(time.time() - end)
 
         x, y = x_.cuda(non_blocking=True), y_.cuda(non_blocking=True)
+
 
         output = model(x)      
 

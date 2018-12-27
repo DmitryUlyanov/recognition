@@ -2,7 +2,8 @@ from huepy import cyan
 import torch 
 import torchvision.utils 
 import numpy as  np 
-
+from utils.task_queue import TaskQueue
+import os
 class AverageMeter(object):
     """Computes and stores the average and current value"""
 
@@ -142,3 +143,120 @@ def get_grid(*args, sz = 256):
     
     return x
 
+
+
+class Saver(object):
+    
+    def __init__(self, args, save_fn, tq_maxsize = 5, clean_dir=True, num_workers=5):
+        super(Saver, self).__init__()
+        self.args = args
+
+        self.save_dir = args.dump_path
+        self.need_save = False
+        if 'save_driver' in args and args.save_driver is not None:
+            
+            # print('-----------------')
+            if clean_dir and os.path.exists(args.dump_path):
+                import shutil
+                shutil.rmtree(args.dump_path) 
+
+            os.makedirs(args.dump_path, exist_ok=True)
+
+            self.tq = TaskQueue(maxsize=args.batch_size * 2, num_workers=num_workers, verbosity=0) 
+
+            self.save_fn = save_fn
+            self.need_save = True
+
+    def maybe_save(self, iteration, **kwargs):
+        if self.need_save:
+            self.tq.add_task(self.save_fn, kwargs, save_dir=self.save_dir, args=self.args, iteration=iteration)  
+
+    def stop(self):
+        if self.need_save:
+            self.tq.stop_()
+
+
+
+def npz_per_item(data, path, args):
+    """
+    Saves predictions to npz format, using one npy per sample,
+    and sample names as keys
+    :param output: Predictions by sample names
+    :param path: Path to resulting npz
+    """
+
+    np.savez_compressed(path, **data)
+
+
+def tensor_to_np_recursive(data):
+
+    if isinstance(data, torch.Tensor): 
+        return data.detach().cpu().numpy() 
+    elif isinstance(data, dict):
+        for k in data.keys():
+            data[k] = tensor_to_np_recursive(data[k])
+
+        return data
+
+    elif isinstance(data, (tuple, list)):
+        for i in range(len(data)):
+            data[i] = tensor_to_np_recursive(data[i])
+
+        return data
+    else:
+        return data
+
+def tensor_to_device_recursive(data):
+
+    if isinstance(data, torch.Tensor): 
+        return data.to('cuda', non_blocking=True)
+    elif isinstance(data, dict):
+        for k in data.keys():
+            data[k] = tensor_to_device_recursive(data[k])
+
+        return data
+
+    elif isinstance(data, (tuple, list)):
+        for i in range(len(data)):
+            data[i] = tensor_to_device_recursive(data[i])
+
+        return data
+    else:
+        return data
+
+def npz_per_batch(data, save_dir, args, iteration):
+    """
+    Saves predictions to npz format, using one npy per sample,
+    and sample names as keys
+    :param output: Predictions by sample names
+    :param path: Path to resulting npz
+    """
+
+    data = tensor_to_np_recursive(data)
+    path = f'{save_dir}/{iteration}.npz'
+
+    np.savez_compressed(path, **data)
+
+    data=None
+
+
+from collections import defaultdict
+class Meter:
+    def __init__(self):
+        super().__init__()
+        self.data = defaultdict(list)
+        self.accumulated = ['topk']
+    # def __getitem__(self, val):
+
+
+    def update(self, name, val):
+        self.data[name].append(val)
+
+    def get_avg(self, name):
+        if name in self.accumulated:
+            return self.get_last(name)
+
+        return np.mean(self.data[name])
+
+    def get_last(self, name):
+        return self.data[name][-1]

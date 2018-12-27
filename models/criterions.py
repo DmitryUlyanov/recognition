@@ -450,3 +450,79 @@ def lovasz_softmax_flat(probas, labels, only_present=False):
         fg_sorted = fg[perm]
         losses.append(torch.dot(errors_sorted, lovasz_grad(fg_sorted)))
     return sum(losses)/len(losses)
+
+
+
+
+import torch.nn.functional as F
+import torch.nn as nn
+import torchvision
+import torch
+
+
+class VGGLoss(nn.Module):
+    def __init__(self):
+        super(VGGLoss, self).__init__()
+
+    
+        vgg19_avg_pooling = []
+
+        vgg19 = torchvision.models.vgg19(pretrained=True).features
+        for weights in vgg19.parameters():
+            weights.requires_grad = False
+
+        for module in vgg19.modules():
+            if module.__class__.__name__ == 'Sequential':
+                continue
+            elif module.__class__.__name__ == 'MaxPool2d':
+                vgg19_avg_pooling.append(nn.AvgPool2d(kernel_size=2, stride=2, padding=0))
+            else:
+                vgg19_avg_pooling.append(module)
+        
+        vgg19_avg_pooling = nn.Sequential(*vgg19_avg_pooling)
+
+        self.vgg19 = vgg19_avg_pooling
+        
+
+    def forward(self, input, target):
+        result = 0
+
+        features_input = normalize_inputs_vgg(input)
+        features_target = normalize_inputs_vgg(target)
+        for layer in self.vgg19[:30]:
+
+            features_input  = layer(features_input)
+            features_target = layer(features_target)
+
+            if layer.__class__.__name__ == 'ReLU':
+                result = result + F.l1_loss(features_input, features_target)
+
+        return result
+
+
+
+def normalize_inputs_vgg(x):
+    mean_ = torch.FloatTensor([0.485, 0.456, 0.406]).cuda()[None, :, None, None]
+    std_ = torch.FloatTensor([0.229, 0.224, 0.225]).cuda()[None, :, None, None]
+
+    return (x - mean_) / std_
+
+class EntropyLoss(nn.Module):
+    def __init__(self):
+        super(EntropyLoss, self).__init__()
+
+    def forward(self, input):
+        loss = F.softmax(input, dim=1)*F.log_softmax(input, dim=1)
+        return loss.mean()
+
+
+class TVLoss(nn.Module):
+    def __init__(self):
+        super(TVLoss, self).__init__()
+        self.epsilon = 1e-6
+
+    def forward(self, input):
+        loss = torch.pow(input[:, :, 1:, :-1] - input[:, :, :-1, :-1], 2) + torch.pow(input[:, :, :-1, 1:] - input[:, :, :-1, :-1], 2)
+        loss = torch.sqrt(loss + self.epsilon).mean()
+        return loss
+

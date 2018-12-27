@@ -34,7 +34,7 @@ parser.add('--overwrite',  action='store_true')
 parser.add('--num_workers',  type=int, default=4, help='')
 
 
-
+parser.add('--remove_alpha',  action='store_true')
 
 args = parser.parse_args()
 
@@ -69,10 +69,14 @@ def convert(src, dst, args):
             print(red(src))
             return
         
-        if args.save_aspect_ratio:
-            img = image_resize(img, max_dim=args.max_dim)
-        else:
-            img = image_resize(img, specific_size=(args.out_img_height, args.out_img_width)) 
+        if (args.out_img_height > 0) and (args.out_img_width > 0) or args.max_dim > 0 :
+            if args.save_aspect_ratio:
+                img = image_resize(img, max_dim=args.max_dim)
+            else:
+                img = image_resize(img, specific_size=(args.out_img_height, args.out_img_width)) 
+
+        if args.remove_alpha and len(img.shape):
+            img = img[:, :, :3]
 
         if args.out_ext == 'png':
             cv2.imwrite(dst, img,  [cv2.IMWRITE_PNG_COMPRESSION, 9])
