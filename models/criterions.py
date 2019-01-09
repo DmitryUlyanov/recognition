@@ -2,6 +2,7 @@ from tqdm import tqdm
 from huepy import red
 import numpy as np
 import torch
+import os 
 
 from torch import nn
 import torch.nn.functional as fnn
@@ -454,20 +455,72 @@ def lovasz_softmax_flat(probas, labels, only_present=False):
 
 
 
+class View(nn.Module):
+    def __init__(self):
+        super(View, self).__init__()
+
+    def forward(self, x):
+        return x.view(-1) 
+
 import torch.nn.functional as F
 import torch.nn as nn
 import torchvision
 import torch
+from collections import OrderedDict
+from os.path import expanduser
 
+class VGGLossMix(nn.Module):
+    def __init__(self, weight=0.5):
+        super(VGGLossMix, self).__init__()
+        self.l1 = VGGLoss()
+        self.l2 = VGGLoss(net='caffe')
+        self.weight = weight
 
+    def forward(self, input, target):
+        return self.l1(input, target)*self.weight + self.l2(input, target) * (1-self.weight)
+
+        
 class VGGLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, net='pytorch', normalize_grad=False):
         super(VGGLoss, self).__init__()
 
-    
+        self.normalize_grad=normalize_grad
+        
+        if net == 'pytorch':
+            vgg19 = torchvision.models.vgg19(pretrained=True).features
+            self.mean_ = torch.FloatTensor([0.485, 0.456, 0.406])[None, :, None, None]
+            self.std_  = torch.FloatTensor([0.229, 0.224, 0.225])[None, :, None, None]
+
+        elif net == 'caffe':
+            if not os.path.exists('~/.torch/models/vgg_caffe_features.pth'):
+                vgg_weights = torch.utils.model_zoo.load_url('https://s3-us-west-2.amazonaws.com/jcjohns-models/vgg19-d01eb7cb.pth') 
+                
+                map = {'classifier.6.weight':u'classifier.7.weight', 'classifier.6.bias':u'classifier.7.bias'}
+                vgg_weights = OrderedDict([(map[k] if k in map else k,v) for k,v in vgg_weights.items()])
+
+                
+
+                model = torchvision.models.vgg19()
+                model.classifier = nn.Sequential(View(), *model.classifier._modules.values())
+                
+
+                model.load_state_dict(vgg_weights)
+                
+                vgg19 = model.features
+                torch.save(vgg19, f'{expanduser("~")}/.torch/models/vgg_caffe_features.pth')
+
+                
+
+                self.mean_ = torch.FloatTensor([103.939, 116.779, 123.680])[None, :, None, None] / 255.
+                self.std_   = torch.FloatTensor([1./255, 1./255, 1./255])[None, :, None, None]
+            else:
+                vgg19 = torch.load(f'{expanduser("~")}/.torch/models/vgg_caffe_features.pth')
+        else:
+            assert False
+
         vgg19_avg_pooling = []
 
-        vgg19 = torchvision.models.vgg19(pretrained=True).features
+        
         for weights in vgg19.parameters():
             weights.requires_grad = False
 
@@ -481,31 +534,36 @@ class VGGLoss(nn.Module):
         
         vgg19_avg_pooling = nn.Sequential(*vgg19_avg_pooling)
 
+        print(vgg19_avg_pooling)
         self.vgg19 = vgg19_avg_pooling
         
+        
+
+    def normalize_inputs(self, x):
+        return (x - self.mean_.cuda()) / self.std_.cuda()
+
 
     def forward(self, input, target):
-        result = 0
+        loss = 0
 
-        features_input = normalize_inputs_vgg(input)
-        features_target = normalize_inputs_vgg(target)
+        features_input = self.normalize_inputs(input)
+        features_target = self.normalize_inputs(target)
         for layer in self.vgg19[:30]:
 
             features_input  = layer(features_input)
             features_target = layer(features_target)
 
             if layer.__class__.__name__ == 'ReLU':
-                result = result + F.l1_loss(features_input, features_target)
 
-        return result
+                if self.normalize_grad:
+                    pass
+                else:
+                    loss = loss + F.l1_loss(features_input, features_target)
+
+        return loss
 
 
 
-def normalize_inputs_vgg(x):
-    mean_ = torch.FloatTensor([0.485, 0.456, 0.406]).cuda()[None, :, None, None]
-    std_ = torch.FloatTensor([0.229, 0.224, 0.225]).cuda()[None, :, None, None]
-
-    return (x - mean_) / std_
 
 class EntropyLoss(nn.Module):
     def __init__(self):
@@ -515,6 +573,13 @@ class EntropyLoss(nn.Module):
         loss = F.softmax(input, dim=1)*F.log_softmax(input, dim=1)
         return loss.mean()
 
+class DummyCriterion(nn.Module):
+    def __init__(self, *args, **kwargs):
+        super(DummyCriterion, self).__init__()
+        self.out = torch.tensor(0)
+
+    def forward(self, input, target):
+        return torch.FloatTensor(0).cuda()
 
 class TVLoss(nn.Module):
     def __init__(self):

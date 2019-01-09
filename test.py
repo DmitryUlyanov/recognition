@@ -54,7 +54,10 @@ model_native_transform = m['model'].get_native_transform()
 dataloader = m['dataloader'].get_dataloader(args, model_native_transform, args.part)
 
 
-criterion = criterions.get_criterion(args.criterion, args).to(args.device)
+if args.part == 'test':
+    criterion = criterions.get_criterion('DummyCriterion', args).to(args.device)
+else:
+    criterion = criterions.get_criterion(args.criterion, args).to(args.device)
 
 
 # Load model 
@@ -72,9 +75,25 @@ else:
     save_driver = None
 
 
-writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='test')
+writer = None
+# if part == 'tes'
+# writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='test')
 
-m['runner'].run_epoch.writer = writer
+class DummyWriter(object):
+    """docstring for DummyWriter"""
+    def __init__(self, *args):
+        super(DummyWriter, self).__init__()
+
+    def add_scalar(self, *args):
+        pass
+     
+    def add_image(self, *args):
+        pass   
+
+
+
+
+m['runner'].run_epoch.writer = DummyWriter()
 
 torch.set_grad_enabled(False)
 loss = m['runner'].run_epoch(

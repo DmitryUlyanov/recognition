@@ -129,7 +129,7 @@ def norm(num_features, tp='bn'):
         return Identity()
 
 
-def conv(in_f, out_f, kernel_size, stride=1, bias=True, pad='zero', downsample_mode='stride'):
+def conv(in_f, out_f, kernel_size, stride=1, bias=True, pad='zero', downsample_mode='stride', conv_class=nn.Conv2d):
     downsampler = None
     if stride != 1 and downsample_mode != 'stride':
 
@@ -150,7 +150,7 @@ def conv(in_f, out_f, kernel_size, stride=1, bias=True, pad='zero', downsample_m
         padder = nn.ReflectionPad2d(to_pad)
         to_pad = 0
   
-    convolver = nn.Conv2d(in_f, out_f, kernel_size, stride, padding=to_pad, bias=bias)
+    convolver = conv_class(in_f, out_f, kernel_size, stride, padding=to_pad, bias=bias)
 
     # print (layers22)
     layers = filter(lambda x: x is not None, [padder, convolver, downsampler])

@@ -47,14 +47,15 @@ class TaskQueue(Queue):
             self.task_done()
 
     def stop_(self):
-
         self.join()
 
         if self.num_workers > 1:
             for i in range(self.num_workers):
                 self.put(None)
+
             for t in self.threads:
                 t.join()
+
 
 
 

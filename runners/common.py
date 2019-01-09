@@ -4,6 +4,8 @@ import torchvision.utils
 import numpy as  np 
 from utils.task_queue import TaskQueue
 import os
+import shutil
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
 
@@ -157,12 +159,11 @@ class Saver(object):
             
             # print('-----------------')
             if clean_dir and os.path.exists(args.dump_path):
-                import shutil
                 shutil.rmtree(args.dump_path) 
 
             os.makedirs(args.dump_path, exist_ok=True)
 
-            self.tq = TaskQueue(maxsize=args.batch_size * 2, num_workers=num_workers, verbosity=0) 
+            self.tq = TaskQueue(maxsize=tq_maxsize, num_workers=num_workers, verbosity=0) 
 
             self.save_fn = save_fn
             self.need_save = True
@@ -238,6 +239,28 @@ def npz_per_batch(data, save_dir, args, iteration):
     np.savez_compressed(path, **data)
 
     data=None
+
+from PIL import Image 
+
+def img_per_item(data, save_dir, args, iteration):
+    """
+    Saves predictions to npz format, using one npy per sample,
+    and sample names as keys
+    :param output: Predictions by sample names
+    :param path: Path to resulting npz
+    """
+
+    data = tensor_to_np_recursive(data)
+    path = f'{save_dir}/{iteration}.npz'
+
+    for pred, name in zip(data['output'], data['names']):
+        img_to_save = (pred.transpose(1,2,0) * 255).astype(np.uint8)
+        Image.fromarray(img_to_save).save(f'{save_dir}/{os.path.basename(name).split(".")[0]:>04}.png')  
+
+    # np.savez_compressed(path, **data)
+
+    # data=None
+
 
 
 from collections import defaultdict
