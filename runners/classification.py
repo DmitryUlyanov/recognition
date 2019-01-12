@@ -1,88 +1,43 @@
-import gc
-import os.path
+import sys
 import time
 import torch
-import numpy as np
 import tqdm
-from runners.common import AverageMeter, accuracy, print_stat
-from huepy import red, lightblue, orange, cyan
-from utils.task_queue import TaskQueue
+from runners.common import print_stat, get_grid, tensor_to_device_recursive, Meter
+from huepy import lightblue, cyan, red
+import numpy as np
 
 
 def get_args(parser):
-    parser.add('--use_mixup',  default=False, action='store_true')
-    parser.add('--dump_loss',  default=False, action='store_true')
-    parser.add('--mixup_alpha', type=float, default=0.1)
+  parser.add('--log_frequency_loss',   type=int,   default=50)
+  parser.add('--log_frequency_images', type=int, default=1000)
 
-    parser.add('--print_frequency', type=int, default=50)
-    parser.add('--niter_in_epoch', type=int, default=0)
+
+  parser.add('--niter_in_epoch', type=int, default=0)
+
+  parser.add('--gradient_accumulation', type=int, default=1)
+
+
+  return parser
+
+
+
+def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part, writer, saver = None):
     
-    parser.add('--gradient_accumulation', type=int, default=1)
+    meter = Meter()
 
-    return parser
-
-def check_data(data): #dataloader):
-   (names, x_, y_)  = data #iter(dataloader_train).next()[1].to(args.device)
-
-   assert isinstance(names, list) and isinstance(x_, torch.cuda.FloatTensor) and isinstance(y_, list), red("expecting each output to be a list of tensors")
-   assert len(names) == len(y_)
-   assert len(x_) == 1 or len(x_) == len(y_)
-
-data = dict(last_it=0)
-
-
-import torch
-from torch import nn
-
-
-class MAPk(nn.Module):
-    def __init__(self, topk=3):
-        super().__init__()
-        self.topk = topk
-
-    def forward(self, input, target):
-        _, predictions = input.topk(self.topk, dim=1, sorted=True)
-
-        apk_v = torch.eq(target, predictions[:, 0]).float()
-        for k in range(1, self.topk):
-            apk_v += torch.eq(target, predictions[:, k]).float() / (k + 1)
-
-        return apk_v.mean()
-
-
-
-def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'):
-    batch_time  = AverageMeter()
-    data_time   = AverageMeter()
-    loss_meter  = AverageMeter()
-    acc_meter   = AverageMeter()
-    topk_meter  = AverageMeter()
-    
-    writer = run_epoch.writer
-    outputs = []
-
-
-    saver = Saver(args, npz_per_batch, tq_maxsize = 5)
-
-    end = time.time()
-    
     if part=='train':
         optimizer.zero_grad()
-        if args.num_folds_train < 245:
-            dataloader = args.get_dataloader(args, None, 'train')
 
-    for it, (names, x_, *y_) in enumerate(dataloader):
-        
+    end = time.time()
+    for it, data in enumerate(dataloader):
+
         # Measure data loading time
-        data_time.update(time.time() - end)
-        
-        # check_data((names, x_, y_))
-        
-        y = [y.to(args.device, non_blocking=True) for y in y_]
-        x = x_.to(args.device, non_blocking=True)
-        
-        
+        meter.update('Data time', time.time() - end)
 
+        names, x_, y_ = data['names'], data['input'], data['target']
+        x, y = tensor_to_device_recursive(x_), tensor_to_device_recursive(y_)
+
+        # Forward
         if args.merge_model_and_loss:
             loss, output = model(y, x)
             loss = loss.mean()
@@ -91,179 +46,71 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part='train'
             loss = criterion(output, y)
 
 
-        if part=='train':
+        # Backward
+        if part == 'train':
             (loss / args.gradient_accumulation).backward()
                         
             if it % args.gradient_accumulation == 0:
                 optimizer.step()
                 optimizer.zero_grad()
 
+
+        saver.maybe_save(iteration=it, output=output, names=names)
         
-        # Measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
 
-        loss_meter.update(loss.item())
-
-        # For multitarget tasks we want to get acc per target
-        acc_per_target = accuracy(output, y)
-        acc_meter.update(np.mean([x for x in acc_per_target if x != -1]))
-
-        topk = MAPk(3)(output[0], y[0])
-
-        if args.dump_loss:
-            losses = nn.CrossEntropyLoss(reduction='none')(output[0], y[0])
-            saver.maybe_save(iteration=it, names=names, losses=losses)
-
-        else:
-            saver.maybe_save(iteration=it, x=x_, y=y_, output=output, names=names)
-
-        # Logging 
-        loss_meter.update(loss.item(), x.shape[0])
-
-        topk_meter.update(topk, x.shape[0])
+        # ----------------------------
+        #            Logging 
+        # ----------------------------
+        
+        meter.update('Loss', loss.item())
 
         if part == 'train':
-            writer.add_scalar(f'Metrics/{part}/loss', loss.item(),   data['last_it'])
-            writer.add_scalar(f'Metrics/{part}/acc', acc_meter.val,  data['last_it'])
-            writer.add_scalar(f'Metrics/{part}/mapk', topk_meter.val,  data['last_it'])
 
-            # writer.add_scalars(f'metrics/{part}/accs_per_target', {str(k): acc_per_target[k] for k in range(len(acc_per_target))}, last_it[part])
-            data['last_it'] += 1
+            for metric in meter.data.keys():
+                writer.add_scalar(f'Metrics/{part}/{metric}', meter.get_last(metric),   writer.last_it)
+            
+            writer.add_scalar(f'LR', optimizer.param_groups[0]['lr'],   writer.last_it)
 
-        if it % args.print_frequency == 0:
-            print(f'{lightblue(part.capitalize())}: [{epoch}][{it}/{len(dataloader)}]\t'\
-                  f'{print_stat("Time", batch_time.val, batch_time.avg)}\t'\
-                  f'{print_stat("Data", data_time.val, data_time.avg)}\t'\
-                  f'{print_stat("Loss", loss_meter.val, loss_meter.avg, 4)}\t',
-                  f'{print_stat("MAP@3", topk_meter.val, topk_meter.avg, 4)}\t',
-                  f'{print_stat("Acc",  acc_meter.val,  acc_meter.avg, 4)}\t')
+            writer.last_it += 1
 
-        if args.niter_in_epoch > 0 and it % args.niter_in_epoch == 0 and it > 0:
-            break 
 
-        gc.collect()
-                
-    saver.stop()  
 
-    print(f' * \n'
-          f' * Epoch {epoch} {red(part.capitalize())}:\t'
-          f'Loss {loss_meter.avg:.4f}\t'
-          f'Acc  {acc_meter.avg:.4f}\t'
-          f'MAP@3  {topk_meter.avg:.4f}\t'
-          f' *\t\n')
+        # Print
+        if it % args.log_frequency_loss == 0:
+
+            s = f'{lightblue(part.capitalize())}: [{epoch}][{it}/{len(dataloader)}]\t'
+
+            for metric in meter.data.keys():
+                s += f'{print_stat(metric, meter.get_last(metric), meter.get_avg(metric), 4)}    '
+
+            print(s)
+
+                    
+              
+        # Measure elapsed time
+        meter.update('Batch time', time.time() - end)
+        end = time.time()
+
+
+        if part == 'train' and args.niter_in_epoch > 0 and it % args.niter_in_epoch == 0 and it > 0:
+            break   
+
+    saver.stop()
+
+
+    # Printing    
+    s = f' * \n * Epoch {epoch} {red(part.capitalize())}:\t'
+    for metric in meter.data.keys():
+        s += f'{metric} {meter.get_avg(metric):.4f}    '
+
+    print(s + ' *\t\n')
+
 
     if part != 'train':
-        writer.add_scalar(f'Metrics/{part}/loss',   loss_meter.avg,  data['last_it'])
-        writer.add_scalar(f'Metrics/{part}/acc',    acc_meter.avg,   data['last_it'])
-        writer.add_scalar(f'Metrics/{part}/MAP@3',  topk_meter.avg,  data['last_it'])
+        s = f'{lightblue(part.capitalize())}: [{epoch}][{it}/{len(dataloader)}]\t'
 
-    return -topk_meter.avg
-
-
-def npz_per_item(data, path, args):
-    """
-    Saves predictions to npz format, using one npy per sample,
-    and sample names as keys
-
-    :param output: Predictions by sample names
-    :param path: Path to resulting npz
-    """
-
-    np.savez_compressed(path, **data)
+        for metric in meter.data.keys():
+            writer.add_scalar(f'Metrics/{part}/{metric}', meter.get_avg(metric),   epoch)
 
 
-def tensor_to_np_recursive(data):
-
-    if isinstance(data, torch.Tensor): 
-        return data.detach().cpu().numpy() 
-    elif isinstance(data, dict):
-        for k in data.keys():
-            data[k] = tensor_to_np_recursive(data[k])
-
-        return data
-
-    elif isinstance(data, (tuple, list)):
-        for i in range(len(data)):
-            data[i] = tensor_to_np_recursive(data[i])
-
-        return data
-    else:
-        return data
-
-
-def npz_per_batch(data, save_dir, args, iteration):
-    """
-    Saves predictions to npz format, using one npy per sample,
-    and sample names as keys
-
-    :param output: Predictions by sample names
-    :param path: Path to resulting npz
-    """
-
-    data = tensor_to_np_recursive(data)
-    path = f'{save_dir}/{iteration}.npz'
-
-    np.savez_compressed(path, **data)
-
-    data=None
-    
-    gc.collect()
-
-
-class Saver(object):
-    
-    def __init__(self, args, save_fn, tq_maxsize = 5, clean_dir=True, num_workers=5):
-        super(Saver, self).__init__()
-        self.args = args
-
-        self.save_dir = args.dump_path
-        self.need_save = False
-        if 'save_driver' in args and args.save_driver is not None:
-            
-            # print('-----------------')
-            if clean_dir and os.path.exists(args.dump_path):
-                import shutil
-                shutil.rmtree(args.dump_path) 
-
-            os.makedirs(args.dump_path, exist_ok=True)
-
-            self.tq = TaskQueue(maxsize=args.batch_size * 2, num_workers=num_workers, verbosity=0) 
-
-            self.save_fn = save_fn
-            self.need_save = True
-
-    def maybe_save(self, iteration, **kwargs):
-        if self.need_save:
-            self.tq.add_task(self.save_fn, kwargs, save_dir=self.save_dir, args=self.args, iteration=iteration)  
-
-    def stop(self):
-        if self.need_save:
-            self.tq.stop_()
-
-# def saver(args, names, x_, y_, output):
-#     if 'save_driver' in args and args.save_driver is not None:
-
-#         names =
-
-#         y    = y_.detach().cpu().numpy() 
-#         pred = output.detach().cpu().numpy()
-
-#          tq.add_task(npz_per_item, {
-#                 # 'input':  _x.detach().cpu().numpy(),
-#                 # 'target': y,
-#                 'pred':   pred,#.detach().cpu().numpy(),
-#                 'name':   str(name),
-#             }, path=f'{args.dump_path}/{name}.png', args=args)  
-
-
-#         for num, (name, x) in enumerate(zip(names, x_)):
-#             y = [y[num].detach().cpu().numpy() for y in y_]
-#             pred = [o[num].detach().cpu().numpy() for o in output]
-
-#             tq.add_task(npz_per_item, {
-#                 # 'input':  _x.detach().cpu().numpy(),
-#                 # 'target': y,
-#                 'pred':   pred,#.detach().cpu().numpy(),
-#                 'name':   str(name),
-#             }, path=f'{args.dump_path}/{name}.png', args=args)  
+    return meter.get_avg('Loss')
