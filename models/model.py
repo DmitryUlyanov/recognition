@@ -163,7 +163,7 @@ class Model:
 
     return wrapper
 
-def save_model(model, epoch, args, optimizer=None):
+def save_model(model, epoch, args, optimizer=None, stage_num=0):
     
     model_to_save = model
     if isinstance(model, torch.nn.DataParallel):
@@ -182,11 +182,11 @@ def save_model(model, epoch, args, optimizer=None):
 
 
     # Dump
-    save_path = f'{args.experiment_dir}/checkpoints/model_{epoch}.pth'
+    save_path = f'{args.experiment_dir}/checkpoints/stage_{stage_num}_model_{epoch}.pth'
 
     if args.compress_checkpoints:
         with gzip.open(f'{save_path}.gz', 'wb') as f:
-            torch.save(dict_to_save, save_path, pickle_protocol=-1)
+            torch.save(dict_to_save, f, pickle_protocol=-1)
 
     torch.save(dict_to_save, save_path, pickle_protocol=-1)
 
