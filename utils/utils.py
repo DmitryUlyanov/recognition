@@ -8,6 +8,7 @@ import torch
 import numpy as np
 import imgaug as ia
 import yamlenv
+# import ruamel.yaml as yamlenv
 import re 
 import argparse
 from huepy import red, green
@@ -41,7 +42,7 @@ def parse_dict(s):
     d = {}
     for entry in s.split("^"):
         k, v = entry.split('=')
-        optimizer_args[k] = eval(v)
+        d[k] = eval(v)
 
     return d
 
@@ -170,26 +171,26 @@ def load_config(extension, config_name, args):
 
 
         
-def load_model(extension, module_type, module_name):
-    '''
-        module_type : models | dataloaders 
-    '''
-    cdir = os.getcwd()
-    os.chdir(RECOGNITION_PATH)
+# def load_model_class(extension, module_name):
+#     '''
+#         module_type : models | dataloaders 
+#     '''
+#     cdir = os.getcwd()
+#     os.chdir(RECOGNITION_PATH)
 
-    from models.model import load_model 
+#     from models.model import load_model 
 
-    # Try to search in defined ones
-    model = load_model( )
+#     # Try to search in defined ones
+#     model = load_model( )
 
-    # Search in extension
-    if model is None:
-        m = load_module(extension, module_type, module_name)
-        model = m.module_name()
+#     # Search in extension
+#     if model is None:
+#         m = load_module(extension, module_name)
+#         model = m.module_name()
 
-    os.chdir(cdir)
+#     os.chdir(cdir)
 
-    return model
+#     return model
 
 
 
@@ -199,6 +200,12 @@ def load_module(extension, module_type, module_name):
     '''
     cdir = os.getcwd()
     os.chdir(RECOGNITION_PATH)
+
+    if module_type == 'models':
+        # print('2222222222222222')
+        from models.model import Model
+        return Model(module_name) 
+
 
     if extension == '':
         m = importlib.import_module(f'{module_type}.{module_name}')

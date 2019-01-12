@@ -125,7 +125,10 @@ class CsvDataset(Dataset):
         # if self.target_transform:
         #     target = self.target_transform(target)
 
-        return (row['img_path'], input, *target)
+
+        return dict(names=row['img_path'], 
+                    input=input, 
+                    target= target )
 
     def __len__(self):
         return self.df.shape[0]

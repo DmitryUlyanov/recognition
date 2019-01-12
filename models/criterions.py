@@ -29,8 +29,8 @@ def get_criterion(name, args, **kwargs):
     else:
         assert False, red(f"Cannot find loss with name {name}")
 
-    if args.use_all_gpus and args.parallel_criterion:
-        criterion = DataParallelCriterion(criterion)
+    # if args.use_all_gpus and args.parallel_criterion:
+    #     criterion = DataParallelCriterion(criterion)
 
     return criterion
 
@@ -210,7 +210,7 @@ class CriterionList(_Loss):
 
 
 
-from models.lovasz_losses import lovasz_hinge, lovasz_loss_ignore_empty
+from models.src.lovasz_losses import lovasz_hinge, lovasz_loss_ignore_empty
 
 def symmetric_lovasz(outputs, targets):
     return (lovasz_hinge(outputs, targets) + lovasz_hinge(-outputs, 1 - targets)) / 2

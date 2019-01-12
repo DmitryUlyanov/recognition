@@ -185,6 +185,23 @@ class ListModule(nn.Module):
 
 
 
-def get_loss(name):
-    
-    return torch.nn['name']()
+
+class BaseModel(torch.nn.Module):
+    def __init__(self, feature_extractor, predictor):
+        super(BaseModel, self).__init__()
+        
+        self.feature_extractor = feature_extractor
+        self.predictor = predictor
+        self.pool = torch.nn.AdaptiveAvgPool2d((1, 1))
+
+    def forward(self, input):
+        x = self.feature_extractor(input)
+
+        x = self.pool(x)
+        x = x.view(x.size(0), -1)
+        
+        x = self.predictor(x)
+
+        return x
+        
+

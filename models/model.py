@@ -14,16 +14,16 @@ import os
 class Model:
     def __init__(self, model_name):
         self.model_name = model_name
-        self.net_wrapper = self.find_wrapper()
+        self.net_wrapper = self.find_definition()
 
-    def find_module(self):
-        if model_name in models.wrappers.__dict__:
-            return models.wrappers[model_name]
+    def find_definition(self):
+        if self.model_name in models.wrappers.__dict__:
+            return models.wrappers.__dict__[self.model_name]
         else:
             assert False, 'Cannot find model wrapper'
             
 
-    def get_model_args(self, get_args):
+    def get_args(self, parser):
         parser.add('--checkpoint',      type=Path)
         parser.add('--net_init',        type=str, default="default", help='pretrained|lsuv|default')
         parser.add('--lsuv_batch_size', type=int, default=-1)
@@ -155,13 +155,13 @@ class Model:
 
 
 
-    def get_native_transform():
+    def get_native_transform(self):
         if hasattr(self.net_wrapper, 'native_transform'):
             return net_wrapper.native_transform()
         else:
             return Identity
 
-    return wrapper
+    
 
 def save_model(model, epoch, args, optimizer=None, stage_num=0):
     
@@ -194,24 +194,6 @@ def save_model(model, epoch, args, optimizer=None, stage_num=0):
 
 
 
-class BaseModel(torch.nn.Module):
-    def __init__(self, feature_extractor, predictor):
-        super(BaseModel, self).__init__()
-        
-        self.feature_extractor = feature_extractor
-        self.predictor = predictor
-        self.pool = torch.nn.AdaptiveAvgPool2d((1, 1))
-
-    def forward(self, input):
-        x = self.feature_extractor(input)
-
-        x = self.pool(x)
-        x = x.view(x.size(0), -1)
-        
-        x = self.predictor(x)
-
-        return x
-        
 
 
 def load_model_from_checkpoint(checkpoint_path, args_to_update=None):

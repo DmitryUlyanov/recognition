@@ -6,6 +6,7 @@ from utils.argparse_utils import MyArgumentParser
 # from tensorboardX import SummaryWriter
 from models.model import save_model
 from huepy import yellow 
+from munch import munchify
 
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -22,7 +23,7 @@ import signal
 import time
 import sys
 from pathlib import Path
-
+import colored_traceback.auto
 
 
 # def exit_gracefully(signum, frame):
@@ -159,11 +160,11 @@ def set_param_grad(model, value, set_eval_mode=True):
 
 
 
-for stage_num, (stage_name, stage_args_) in enumerate(args.stages):
+for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
 
     print (yellow(f' - Starting stage "{stage_name}"!'))
 
-    stage_args = {**args, **stage_args_}
+    stage_args = munchify({**vars(args), **stage_args_ })
 
 
     if stage_args.fix_feature_extractor:
