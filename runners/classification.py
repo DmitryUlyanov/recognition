@@ -43,8 +43,8 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part, writer
             loss = loss.mean()
         else:
             output = model(x)      
-            loss = criterion(output, y)
-
+            losses_dict = criterion(output, y)
+            loss = sum(losses_dict.values()) / len(losses_dict)
 
         # Backward
         if part == 'train':
@@ -62,6 +62,9 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, part, writer
         #            Logging 
         # ----------------------------
         
+        for loss_name, loss_ in losses_dict.items():
+            meter.update(f'Loss: {loss_name}', loss_.item())    
+
         meter.update('Loss', loss.item())
 
         if part == 'train':

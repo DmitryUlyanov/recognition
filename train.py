@@ -24,7 +24,7 @@ import time
 import sys
 from pathlib import Path
 import colored_traceback.auto
-
+import utils.savers as savers
 
 # def exit_gracefully(signum, frame):
 #     # restore the original signal handler as otherwise evil things will happen
@@ -76,16 +76,16 @@ parser.add('--optimizer_args', type=str, default="lr=3e-3^momentum=0.9")
 parser.add('--scheduler', type=str, default='ReduceLROnPlateau', help='Just any type of comment')
 parser.add('--scheduler_args', default="factor=0.5^min_lr=1e-6^verbose=True^patience=3", type=str, help='separated with "^" list of args i.e. "lr=1e-3^betas=(0.5,0.9)"')
 
-# Dumper 
-parser.add('--dumper', type=str, default='ReduceLROnPlateau', help='Just any type of comment')
-parser.add('--dumper_args', default="", type=str)
+# Saver 
+parser.add('--saver',       type=str, default='DummySaver', help='Just any type of comment')
+parser.add('--saver_args',  type=str, default='')
 
 
 
 parser.add('--save_frequency',  type=int, default=1, help='')
 parser.add('--random_seed',     type=int, default=123, help='')
-parser.add('--comment', type=str, default='', help='Just any type of comment')
-parser.add('--num_epochs', type=int, default=200)
+parser.add('--comment',         type=str, default='', help='Just any type of comment')
+parser.add('--num_epochs',      type=int, default=200)
 
 
 parser.add('--logging', default=True, action="store_bool")
@@ -97,10 +97,6 @@ parser.add('--set_eval_mode_in_test',  action='store_bool', default=True)
 
 
 parser.add('--device', type=str, default='cuda')
-
-
-parser.add('--save_driver', default=None, type=str)
-parser.add('--dump_path', default=None, type=str)
 
 
 parser.add('--set_eval_mode_epoch', default=-1, type=int)
@@ -142,6 +138,8 @@ criterion = criterions.get_criterion(args.criterion, args).to(args.device)
 # Load model 
 model = m['model'].get_net(args, dataloader_train, criterion)
 
+# Load saver
+saver = savers.get_saver(args.saver, args)
 
 # Dump args (if modified)
 save_yaml(vars(args), f'{args.experiment_dir}/args_modified.yaml')
@@ -189,7 +187,7 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
         #       Train
         # ===================
         torch.set_grad_enabled(True)
-        m['runner'].run_epoch(dataloader_train, model, criterion, optimizer, epoch, stage_args, part='train', writer=writer)
+        m['runner'].run_epoch(dataloader_train, model, criterion, optimizer, epoch, stage_args, part='train', writer=writer, saver=saver)
         
 
 
@@ -202,7 +200,7 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
             model.train()
 
         torch.set_grad_enabled(False)
-        val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, stage_args, part='val', writer=writer)
+        val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, stage_args, part='val', writer=writer, saver=saver)
         
         scheduler.step(val_loss)
 
