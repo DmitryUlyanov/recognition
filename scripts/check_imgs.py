@@ -42,4 +42,4 @@ in_paths = sum([glob(f'{args.in_dir}/*.{x}') for x in img_exts] + [glob(f'{args.
 print(f'Number of input images: {len(in_paths)}')
 
 out = Parallel(n_jobs=args.num_workers, verbose=0)(delayed(check)(src) for src in tqdm(in_paths))
-np.savetxt([x for x in out if x is not None], args.out_txt)
+np.savetxt(args.out_txt, [x for x in out if x is not None])

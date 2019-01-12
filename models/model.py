@@ -5,86 +5,110 @@ from utils.utils import load_module
 from munch import munchify
 from models.common import set_param_grad
 from dataloaders.augmenters import Identity
+import gzip
+from pathlib import Path
+
+import models.wrappers
 import os 
 
-def get_model_args(get_args):
-    def wrapper(parser):
-        parser.add('--checkpoint', type=str, default="")
-        parser.add('--net_init', type=str, default="", help='pretrained|lsuv|default')
-        parser.add('--lsuv_batch_size', type=int, default=-1)
-        parser.add('--use_all_gpus', default=False, action='store_bool')
-        parser.add('--parallel_criterion', default=False, action='store_bool')
-        parser.add('--fix_feature_extractor', default=False, action='store_bool')
-        parser.add('--freeze_bn', default=False, action='store_bool')
-        parser.add('--merge_model_and_loss', default=False, action='store_bool')
+class Model:
+    def __init__(self, model_name):
+        self.model_name = model_name
+        self.net_wrapper = self.find_wrapper()
 
-        parser.add('--bn_momentum', default=0.9, type=float)
+    def find_module(self):
+        if model_name in models.wrappers.__dict__:
+            return models.wrappers[model_name]
+        else:
+            assert False, 'Cannot find model wrapper'
+            
+
+    def get_model_args(self, get_args):
+        parser.add('--checkpoint',      type=Path)
+        parser.add('--net_init',        type=str, default="default", help='pretrained|lsuv|default')
+        parser.add('--lsuv_batch_size', type=int, default=-1)
+
+        parser.add('--use_all_gpus',       default=False, action='store_bool')
+        
+        parser.add('--fix_feature_extractor',    default=False, action='store_bool')
+        parser.add('--freeze_bn',                default=False, action='store_bool')
+        parser.add('--merge_model_and_loss',     default=False, action='store_bool')
+
+        parser.add('--fp16',                     default=False, action='store_bool')
+        parser.add('--compress_checkpoints',     default=False, action='store_bool')
+        parser.add('--save_optimizer',           default=False, action='store_bool')
+
+        parser.add('--bn_momentum',  default=-1, type=float)
 
         parser.add('--checkpoint_strict_load_state',   default=True, action='store_bool')
         parser.add('--checkpoint_load_only_extractor', default=False, action='store_bool')
 
-        return get_args(parser)
-
-    return wrapper
+        return self.net_wrapper.get_args(parser)
 
 
-def get_abstract_net(get_net):
-    def wrapper(args, train_dataloader, criterion):
+    def init_weights(self, args, model, train_dataloader):
 
-        model = get_net(args)
-        model = model.to(args.device)
-
-
-        if args.net_init == 'lsuv' and args.checkpoint == '':
+        print(f" - Intializing weights: {yellow(args.net_init)}")
+        if args.net_init == 'lsuv':
             data = iter(train_dataloader).next()['input'].to(args.device)
 
             if args.lsuv_batch_size > 0:
                 data = data[:args.lsuv_batch_size]
+
             model = LSUVinit(model, data, needed_std=1.0, std_tol=0.1,
                              max_attempts=10, do_orthonorm=False, device=args.device)
-            
-        if args.checkpoint != '':
 
-            if os.path.exists(args.checkpoint):
+        return model
+
+    def get_checkpoint_path(self, args):
+        options = [args.checkpoint, args.experiment_dir / 'checkpoints' / args.checkpoint]
+
+        for path in options:
+            if path.exists():
                 checkpoint_path = args.checkpoint
-            elif args.experiment_dir != '' and os.path.exists(os.path.join(args.experiment_dir, 'checkpoints', args.checkpoint)):
-                checkpoint_path = os.path.join(args.experiment_dir, 'checkpoints', args.checkpoint)
-            else:
-                print(args.checkpoint)
-                print(args.experiment_dir)
-                assert False
-
-            print(f" - Loading {yellow(args.model)} from checkpoint {yellow(checkpoint_path)}")
-            
-            state_dict = torch.load(checkpoint_path)
-            if isinstance(state_dict, dict): 
-                state_dict = state_dict['state_dict']
-            
-            if args.checkpoint_load_only_extractor:
-                state_dict = {k: v for k, v in state_dict.items() if not k.startswith('predictor')}
-
-            # k = state_dict.keys()
-            # print('===============', k, [x for x in k if 'bn' in x])
-            # for ff in [x for x in k if 'running_var' in x]:
-            #     del state_dict[ff]
-            import numpy as np
-            # if state_dict['feature_extractor.0.weight'].shape[1] != args.num_input_channels:
-            #     print('Surgery ==============')
-            #     t = torch.zeros( (state_dict['feature_extractor.0.weight'].shape[0], args.num_input_channels, state_dict['feature_extractor.0.weight'].shape[2], state_dict['feature_extractor.0.weight'].shape[3]), dtype=torch.float)
-
-            #     for i in range(int(args.num_input_channels / 3)):
-            #         t[:, i * 3: (i + 1) * 3] = state_dict['feature_extractor.0.weight'] / (int(args.num_input_channels / 3))
-
-            #     if args.num_input_channels % 3 > 0: 
-            #         t[:, - (args.num_input_channels % 3) : ] = state_dict['feature_extractor.0.weight'][:, -(args.num_input_channels % 3) :]
+                break
+        else:
+            assert False, red('Checkpoint path was set, but not found. \n'  + str(options))
 
 
-            #     state_dict['feature_extractor.0.weight'] = t
+    def load_state(self, args, checkpoint_path, model):
+        '''
+            Returns a model loaded from the checkpoint 
+        '''
 
-
-            model.load_state_dict(state_dict, strict=args.checkpoint_strict_load_state)
+        print(f" - Loading {yellow(args.model)} from checkpoint {yellow(checkpoint_path)}")
         
+        state_dict = torch.load(checkpoint_path)
+        if isinstance(state_dict, dict): 
+            state_dict = state_dict['state_dict']
         
+        if args.checkpoint_load_only_extractor:
+            state_dict = {k: v for k, v in state_dict.items() if not k.startswith('predictor')}
+
+        model.load_state_dict(state_dict, strict=args.checkpoint_strict_load_state)
+
+        return model
+
+
+    def get_net(self, args, train_dataloader, criterion):
+        
+        model = self.net_wrapper.get_net(args)
+        model = model.to(args.device)
+
+        if args.fp16:
+            model = model.half()
+
+
+        # Load checkpoint 
+        if args.checkpoint is not None:
+            
+            checkpoint_path = self.get_checkpoint_path()
+            model = self.load_state(args, checkpoint_path, model)
+        else:
+            model = self.init_weights(args, model, train_dataloader)
+      
+        
+        # Some other stuff
         if hasattr(model, 'feature_extractor'):
             value = not args.fix_feature_extractor
             set_param_grad(model.feature_extractor, value = value, set_eval_mode = False)
@@ -96,13 +120,13 @@ def get_abstract_net(get_net):
                 if isinstance(m, torch.nn.BatchNorm2d):
 
                     m.training = False
-                    
                     def nop(*args, **kwargs):
                         pass
 
                     m.train = nop
 
             model.apply(freeze_bn)
+
         
         if args.merge_model_and_loss:
             model = ModelAndLoss(model, criterion)
@@ -110,41 +134,32 @@ def get_abstract_net(get_net):
         if args.use_all_gpus and args.device == 'cuda' and torch.cuda.device_count() > 1:
             print(yellow(' - Using all GPU\'s!'))
 
-            if args.parallel_criterion:
-                import encoding
-                model = encoding.parallel.DataParallelModel(model)       
-            else:
-                model = torch.nn.DataParallel(model) 
-            # encoding.parallel.patch_replication_callback(model)
-            # import encoding
-            # encoding.parallel.DataParallel(model)
+            model = torch.nn.DataParallel(model) 
+          
 
+        if args.bn_momentum != -1:
+            def freeze_bn1(m):
+                if isinstance(m, torch.nn.BatchNorm2d):
 
-        def freeze_bn1(m):
-            if isinstance(m, torch.nn.BatchNorm2d):
+                    m.momentum = args.bn_momentum
+                    
+                    # def nop(*args, **kwargs):
+                    #     pass
 
-                m.momentum = args.bn_momentum
-                
-                # def nop(*args, **kwargs):
-                #     pass
+                    # m.train = nop
 
-                # m.train = nop
-
-        model.apply(freeze_bn1)
+            model.apply(freeze_bn1)
 
 
         return model
 
-    return wrapper
 
-def get_abstract_native_transform(get_native_transform):
-    def wrapper():
-        
-        res = get_native_transform()
-        if res is None:
-            res = Identity
 
-        return res
+    def get_native_transform():
+        if hasattr(self.net_wrapper, 'native_transform'):
+            return net_wrapper.native_transform()
+        else:
+            return Identity
 
     return wrapper
 
@@ -159,12 +174,24 @@ def save_model(model, epoch, args, optimizer=None):
 
     dict_to_save = { 
         'state_dict': model_to_save.state_dict(), 
-        'args': args,
-        #'optimizer': optimizer.state_dict() if optimizer is not None else None
+        'args': args
     }
+
+    if args.save_optimizer and optimizer is not None: 
+        dict_to_save['optimizer'] = optimizer.state_dict()
+
+
+    # Dump
     save_path = f'{args.experiment_dir}/checkpoints/model_{epoch}.pth'
 
+    if args.compress_checkpoints:
+        with gzip.open(f'{save_path}.gz', 'wb') as f:
+            torch.save(dict_to_save, save_path, pickle_protocol=-1)
+
     torch.save(dict_to_save, save_path, pickle_protocol=-1)
+
+
+
 
 
 class BaseModel(torch.nn.Module):
@@ -245,3 +272,18 @@ class ModelAndLoss(torch.nn.Module):
 
 
 
+
+
+import numpy as np
+# if state_dict['feature_extractor.0.weight'].shape[1] != args.num_input_channels:
+#     print('Surgery ==============')
+#     t = torch.zeros( (state_dict['feature_extractor.0.weight'].shape[0], args.num_input_channels, state_dict['feature_extractor.0.weight'].shape[2], state_dict['feature_extractor.0.weight'].shape[3]), dtype=torch.float)
+
+#     for i in range(int(args.num_input_channels / 3)):
+#         t[:, i * 3: (i + 1) * 3] = state_dict['feature_extractor.0.weight'] / (int(args.num_input_channels / 3))
+
+#     if args.num_input_channels % 3 > 0: 
+#         t[:, - (args.num_input_channels % 3) : ] = state_dict['feature_extractor.0.weight'][:, -(args.num_input_channels % 3) :]
+
+
+#     state_dict['feature_extractor.0.weight'] = t

@@ -7,14 +7,12 @@ import time
 import torch
 import numpy as np
 import imgaug as ia
-import yaml
+import yamlenv
 import re 
 import argparse
 from huepy import red, green
 from .io_utils import load_yaml, save_yaml
 import utils.optimizers
-
-
 
 
 FILE_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -39,13 +37,20 @@ def setup(args):
 
     ia.seed(args.random_seed)
 
-
-def get_optimizer(args, model):
-    # Parse parameters
-    optimizer_args = {}
-    for entry in args.optimizer_args.split("^"):
+def parse_dict(s):
+    d = {}
+    for entry in s.split("^"):
         k, v = entry.split('=')
         optimizer_args[k] = eval(v)
+
+    return d
+
+
+def get_optimizer(args, model):
+    
+    # Parse parameters
+    optimizer_args = parse_dict(args.optimizer_args)
+   
 
     params_to_optimize = [p for p in model.parameters() if p.requires_grad]
     
@@ -57,14 +62,10 @@ def get_optimizer(args, model):
     return optimizer
 
 def get_scheduler(args, optimizer):
+
     # Parse parameters
+    scheduler_args = parse_dict(args.scheduler_args)
     
-    # args.scheduler_args.
-    scheduler_args = {}
-    for entry in args.scheduler_args.split("^"):
-        k, v = entry.split('=')
-        scheduler_args[k] = eval(v)
- 
     scheduler = utils.optimizers.get_scheduler(args.scheduler)(optimizer, **scheduler_args)
     print(scheduler)
     return scheduler
@@ -129,17 +130,17 @@ def load_saved_args(experiment_dir, args):
 
 def get_update_defaults_fn(yaml_config, args):
     with open(yaml_config, 'r') as stream:
-        config = yaml.load(stream)
+        config = yamlenv.load(stream)
 
-    def fill_templates(config_dict):
-        for k in config_dict.keys():
-            if isinstance(config_dict[k], str):
-                config_dict[k] = re.sub('\$\{(.*?)\}', lambda x: str(vars(args).get(x.groups()[0], '${' + x.groups()[0] + '}')), config_dict[k], flags=re.DOTALL)
-            elif isinstance(config_dict[k], dict):
-                fill_templates(config_dict[k])
+    # def fill_templates(config_dict):
+    #     for k in config_dict.keys():
+    #         if isinstance(config_dict[k], str):
+    #             config_dict[k] = re.sub('\$\{(.*?)\}', lambda x: str(vars(args).get(x.groups()[0], '${' + x.groups()[0] + '}')), config_dict[k], flags=re.DOTALL)
+    #         elif isinstance(config_dict[k], dict):
+    #             fill_templates(config_dict[k])
 
     def update_defaults_fn(parser):
-        fill_templates(config)
+        # fill_templates(config)
 
         parser.set_defaults(**config)
         return parser
@@ -152,18 +153,44 @@ def load_config(extension, config_name, args):
     if extension == '':
         assert False, red(f'Extension is not specified.')
 
-    yaml_config = f'extensions/{extension}/{config_name}.yaml'
 
-    if os.path.exists(yaml_config):
-        print ((f'Using config {green(yaml_config)}'))
-        return get_update_defaults_fn(yaml_config, args)
-    elif os.path.exists(f'configs/{config_name}.yaml'):
-        print ((f'Using config {green(yaml_config)}'))
-        return get_update_defaults_fn(f'configs/{config_name}.yaml', args)
-    else:
-        assert False, red(f'Config {config_name} not found.')
+    config_extension = f'extensions/{extension}/{config_name}.yaml'
+    config_lib       = f'configs/{config_name}.yaml'
+    
+    for config in [config_extension, config_lib]:
+        if os.path.exists(config):
+            print ((f'Using config {green(config)}'))
+            return get_update_defaults_fn(config, args)
+        else:
+            print ((f'Did not find config {green(config)}'))
+
+    assert False, red(f'Config not found!')
+
+
+
 
         
+def load_model(extension, module_type, module_name):
+    '''
+        module_type : models | dataloaders 
+    '''
+    cdir = os.getcwd()
+    os.chdir(RECOGNITION_PATH)
+
+    from models.model import load_model 
+
+    # Try to search in defined ones
+    model = load_model( )
+
+    # Search in extension
+    if model is None:
+        m = load_module(extension, module_type, module_name)
+        model = m.module_name()
+
+    os.chdir(cdir)
+
+    return model
+
 
 
 def load_module(extension, module_type, module_name):
@@ -192,86 +219,3 @@ def load_module(extension, module_type, module_name):
 
     return m
 
-class ActionNoYes(argparse.Action):
-    def __init__(self, 
-                option_strings,
-                dest,
-                nargs=0,
-                const=None,
-                default=None,
-                type=None,
-                choices=None,
-                required=False,
-                help="",
-                metavar=None):
-
-        assert len(option_strings) == 1
-        assert option_strings[0][:2] == '--'
-        
-        name= option_strings[0][2:]
-        help += f'Use "--{name}" for True, "--no-{name}" for False'
-        super(ActionNoYes, self).__init__(['--' + name, '--no-' + name], 
-                                          dest=dest,
-                                          nargs=nargs,
-                                          const=const,
-                                          default=default,
-                                          type=type,
-                                          choices=choices, 
-                                          required=required, 
-                                          help=help,
-                                          metavar=metavar)
-        
-    def __call__(self, parser, namespace, values, option_string=None):
-        if option_string.startswith('--no-'):
-            setattr(namespace, self.dest, False)
-        else:
-            setattr(namespace, self.dest, True)
-
-
-class SplitStr(argparse.Action):
-    
-    def split(self, x):
-        if x == '':
-            return []
-        else:
-            return [self.elem_type(y) for y in x.split(self.delimiter)]
-
-    def __init__(self, 
-                option_strings,
-                dest,
-                nargs=None,
-                const=None,
-                default=None,
-                type=None,
-                choices=None,
-                required=False,
-                help="",
-                metavar=None,
-                delimiter=',',
-                elem_type=str):
-
-        self.delimiter = delimiter
-        self.elem_type = elem_type
-        
-        default = self.split(default)
-        super(SplitStr, self).__init__(option_strings, 
-                                          dest=dest,
-                                          nargs=nargs,
-                                          const=const,
-                                          default=default,
-                                          type=type,
-                                          choices=choices, 
-                                          required=required, 
-                                          help=help,
-                                          metavar=metavar)
-        
-    def __call__(self, parser, namespace, values, option_string=None):
-        print(values)
-        setattr(namespace, self.dest, self.split(values))
-
-
-class MyArgumentParser(argparse.ArgumentParser):
-    def __init__(self, **kwargs):
-        super(MyArgumentParser, self).__init__(**kwargs)
-        self.register('action', 'store_bool', ActionNoYes)
-        self.register('action', 'split_str',  SplitStr)

@@ -21,6 +21,7 @@ from exp_logger import setup_logging
 import signal
 import time
 import sys
+from pathlib import Path
 # from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
@@ -64,7 +65,7 @@ parser.add('--criterion', type=str, default="", help='')
 parser.add('--save_frequency',  type=int, default=1, help='')
 
 parser.add('--random_seed',     type=int, default=123, help='')
-parser.add('--experiments_dir', type=str, default="experiments", help='')
+parser.add('--experiments_dir', type=Path, default="experiments", help='')
 parser.add('--comment', type=str, default='', help='Just any type of comment')
 
 parser.add('--optimizer', type=str, default='SGD', help='Just any type of comment')
@@ -111,7 +112,7 @@ if args.logging:
                                                 args.args_to_ignore.split(','), 
                                                 exp_name_use_date=True)
 else:
-    args.experiment_dir = '/tmp/recognition'
+    args.experiment_dir = Path('/tmp/recognition')
     writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='_train')
 # Dump args
 save_yaml(vars(args), f'{args.experiment_dir}/args.yaml')

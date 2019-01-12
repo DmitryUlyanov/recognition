@@ -3,52 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from models.common import conv, norm, ListModule
-from models.model import get_abstract_net, get_model_args
-from dataloaders.augmenters import Identity
 
-@get_model_args
-def get_args(parser):
-    parser.add('--num_input_channels', type=int, default=3)
-    parser.add('--num_output_channels', type=int, default=3)
-
-    parser.add('--feature_scale', type=int, default=4)
-    parser.add('--more_layers', type=int, default=0)
-    parser.add('--concat_x', default=False, action='store_bool')
-
-    parser.add('--upsample_mode', type=str, default="deconv")
-    parser.add('--pad', type=str, default="zero")
-
-    parser.add('--norm_layer', type=str, default="in")
-    
-    parser.add('--last_act', default='sigmoid',  type=str)
-    # parser.add('--need_bias',    default=T, action='store_true')
-
-    return parser
-
-@get_abstract_net
-def get_net(args):
-    # load_pretrained = (not args.not_pretrained) and (args.checkpoint == '')
-    
-    # model = models.__dict__[args.arch](pretrained=load_pretrained)
-
-    # Hack to make it work with any image size
-    # model.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-
-    model = UNet(num_input_channels  = args.num_input_channels,
-                 num_output_channels = args.num_output_channels,
-                 feature_scale       = args.feature_scale, 
-                 more_layers         = args.more_layers, 
-                 concat_x            = args.concat_x,
-                 upsample_mode       = args.upsample_mode, 
-                 pad                 = args.pad, 
-                 norm_layer          = args.norm_layer, 
-                 last_act            = args.last_act, 
-                 need_bias           = True)
-
-    return model
-
-def get_native_transform():
-    return Identity
 
 class UNet(nn.Module):
     '''

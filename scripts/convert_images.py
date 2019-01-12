@@ -28,6 +28,8 @@ parser.add('--out_img_height',  type=int, default=0,  help='')
 parser.add('--save_aspect_ratio',  action='store_true')
 parser.add('--max_dim',  type=int, default=0,  help='')
 
+parser.add('--only_downscale', action='store_true')
+
 
 parser.add('--overwrite',  action='store_true')
 
@@ -39,7 +41,7 @@ parser.add('--remove_alpha',  action='store_true')
 args = parser.parse_args()
 
 
-def image_resize(image, specific_size = None, max_dim = None, inter = cv2.INTER_AREA):
+def image_resize(image, specific_size = None, max_dim = None, only_downscale = False, inter = cv2.INTER_AREA):
     dim = None
     (h, w) = image.shape[:2]
 
@@ -55,7 +57,8 @@ def image_resize(image, specific_size = None, max_dim = None, inter = cv2.INTER_
         
         # print(height, width)
 
-    resized = cv2.resize(image, (width, height), interpolation = inter)
+    if only_downscale and (h > height or w > width) or not only_downscale:
+        resized = cv2.resize(image, (width, height), interpolation = inter)
 
     return resized
 
@@ -71,7 +74,7 @@ def convert(src, dst, args):
         
         if (args.out_img_height > 0) and (args.out_img_width > 0) or args.max_dim > 0 :
             if args.save_aspect_ratio:
-                img = image_resize(img, max_dim=args.max_dim)
+                img = image_resize(img, max_dim=args.max_dim, only_downscale=args.only_downscale)
             else:
                 img = image_resize(img, specific_size=(args.out_img_height, args.out_img_width)) 
 
