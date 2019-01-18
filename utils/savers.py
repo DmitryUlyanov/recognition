@@ -1,43 +1,63 @@
+from pathlib import Path
 import math
 import torch
 from torch.optim.optimizer import Optimizer
-
+from utils.utils import parse_dict
+from utils.task_queue import TaskQueue
+import shutil
 from huepy import red
 import torch
 import sys
+import os 
+import numpy as np
+import copy
 
-def get_saver(name, args):
+def get_saver(name, saver_args=''):
     if name in sys.modules[__name__].__dict__:
-        return sys.modules[__name__].__dict__[name](args)
+        return sys.modules[__name__].__dict__[name](**parse_dict(saver_args))
     else:
         assert False, red(f"Cannot find saver with name {name}")
 
 
+def npz_per_batch(data, save_dir, iteration):
+    """
+    Saves predictions to npz format, using one npy per sample,
+    and sample names as keys
+    :param output: Predictions by sample names
+    :param path: Path to resulting npz
+    """
+
+    data = tensor_to_np_recursive(copy.deepcopy(data))
+    # print(data)
+    path = f'{save_dir}/{iteration}.npz'
+
+    data['labels'] = {'1': data['labels'][0], '2': data['labels'][1]}
+    
+    np.savez_compressed(path, **data)
+
+    data=None
 
 class Saver(object):
     
-    def __init__(self, args, save_fn, tq_maxsize = 5, clean_dir=True, num_workers=5):
+    def __init__(self, save_dir, save_fn=npz_per_batch, tq_maxsize = 5, clean_dir=True, num_workers=5):
         super(Saver, self).__init__()
-        self.args = args
+        self.save_dir = Path(str(save_dir))
+        self.need_save = True
 
-        self.save_dir = args.dump_path
-        self.need_save = False
-        if 'save_driver' in args and args.save_driver is not None:
-            
-            # print('-----------------')
-            if clean_dir and os.path.exists(args.dump_path):
-                shutil.rmtree(args.dump_path) 
+        
+        if clean_dir and os.path.exists(self.save_dir):
+            shutil.rmtree(self.save_dir) 
 
-            os.makedirs(args.dump_path, exist_ok=True)
+        os.makedirs(self.save_dir, exist_ok=True)
 
-            self.tq = TaskQueue(maxsize=tq_maxsize, num_workers=num_workers, verbosity=0) 
+        self.tq = TaskQueue(maxsize=tq_maxsize, num_workers=num_workers, verbosity=0) 
 
-            self.save_fn = save_fn
-            self.need_save = True
+        self.save_fn = save_fn
+        # self.need_save = True
 
     def maybe_save(self, iteration, **kwargs):
         if self.need_save:
-            self.tq.add_task(self.save_fn, kwargs, save_dir=self.save_dir, args=self.args, iteration=iteration)  
+            self.tq.add_task(self.save_fn, kwargs, save_dir=self.save_dir, iteration=iteration)  
 
     def stop(self):
         if self.need_save:
@@ -55,3 +75,58 @@ class DummySaver(object):
 
     def stop(self):
         pass
+
+
+
+
+def npz_per_item(data, path, args):
+    """
+    Saves predictions to npz format, using one npy per sample,
+    and sample names as keys
+    :param output: Predictions by sample names
+    :param path: Path to resulting npz
+    """
+
+    np.savez_compressed(path, **data)
+
+
+def tensor_to_np_recursive(data):
+
+    if isinstance(data, torch.Tensor): 
+        return data.detach().cpu().numpy() 
+    elif isinstance(data, dict):
+        for k in data.keys():
+            data[k] = tensor_to_np_recursive(data[k])
+
+        return data
+
+    elif isinstance(data, (tuple, list)):
+        for i in range(len(data)):
+            data[i] = tensor_to_np_recursive(data[i])
+
+        return data
+    else:
+        return data
+        
+
+
+from PIL import Image 
+
+def img_per_item(data, save_dir, args, iteration):
+    """
+    Saves predictions to npz format, using one npy per sample,
+    and sample names as keys
+    :param output: Predictions by sample names
+    :param path: Path to resulting npz
+    """
+
+    data = tensor_to_np_recursive(copy.deepcopy(data))
+    path = f'{save_dir}/{iteration}.npz'
+
+    for pred, name in zip(data['output'], data['names']):
+        img_to_save = (pred.transpose(1,2,0) * 255).astype(np.uint8)
+        Image.fromarray(img_to_save).save(f'{save_dir}/{os.path.basename(name).split(".")[0]:>04}.png')  
+
+    # np.savez_compressed(path, **data)
+
+    # data=None

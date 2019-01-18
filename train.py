@@ -3,7 +3,6 @@ import importlib
 import os
 import torch
 from utils.argparse_utils import MyArgumentParser
-# from tensorboardX import SummaryWriter
 from models.model import save_model
 from huepy import yellow 
 from munch import munchify
@@ -76,11 +75,6 @@ parser.add('--optimizer_args', type=str, default="lr=3e-3^momentum=0.9")
 parser.add('--scheduler', type=str, default='ReduceLROnPlateau', help='Just any type of comment')
 parser.add('--scheduler_args', default="factor=0.5^min_lr=1e-6^verbose=True^patience=3", type=str, help='separated with "^" list of args i.e. "lr=1e-3^betas=(0.5,0.9)"')
 
-# Saver 
-parser.add('--saver',       type=str, default='DummySaver', help='Just any type of comment')
-parser.add('--saver_args',  type=str, default='')
-
-
 
 parser.add('--save_frequency',  type=int, default=1, help='')
 parser.add('--random_seed',     type=int, default=123, help='')
@@ -101,6 +95,8 @@ parser.add('--device', type=str, default='cuda')
 
 parser.add('--set_eval_mode_epoch', default=-1, type=int)
 
+parser.add('--stage', type=str, default=None)
+
 
 
 # Gather args across modules
@@ -113,6 +109,8 @@ if args.logging:
                                                 default_args, 
                                                 args.args_to_ignore.split(','), 
                                                 exp_name_use_date=True)
+
+    args.experiment_dir = Path(args.experiment_dir)
 # else:
 #     args.experiment_dir = Path('/tmp/recognition')
 #     writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='_train')
@@ -127,8 +125,8 @@ setup(args)
 
 # Load dataloaders
 model_native_transform = m['model'].get_native_transform()
-dataloader_train       = m['dataloader'].get_dataloader(args, model_native_transform, 'train')
-dataloader_val         = m['dataloader'].get_dataloader(args, model_native_transform, 'val')
+dataloader_train       = m['dataloader'].get_dataloader(args, model_native_transform, part='train')
+dataloader_val         = m['dataloader'].get_dataloader(args, model_native_transform, part='val')
 
 
 # Load criterion
@@ -139,7 +137,7 @@ criterion = criterions.get_criterion(args.criterion, args).to(args.device)
 model = m['model'].get_net(args, dataloader_train, criterion)
 
 # Load saver
-saver = savers.get_saver(args.saver, args)
+saver = savers.get_saver('DummySaver')
 
 # Dump args (if modified)
 save_yaml(vars(args), f'{args.experiment_dir}/args_modified.yaml')
@@ -156,6 +154,12 @@ def set_param_grad(model, value, set_eval_mode=True):
 
 
 
+if args.stage is not None:
+
+    if args.stage != 'none':
+        args.stages = {args.stage: args.stages[args.stage]}
+    else:
+        args.stages = {'main': {}}
 
 
 for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
@@ -165,8 +169,9 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
     stage_args = munchify({**vars(args), **stage_args_ })
 
 
-    if stage_args.fix_feature_extractor:
-        set_param_grad(model.module.feature_extractor, value=False, set_eval_mode=False)
+    # if stage_args.fix_feature_extractor:
+    set_param_grad(model.module.feature_extractor, value=not stage_args.fix_feature_extractor, set_eval_mode=False)
+    # set_param_grad(model.module.feature_extractor[-1], value=True, set_eval_mode=False)
     
 
     optimizer = get_optimizer(stage_args, model)
@@ -187,7 +192,7 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
         #       Train
         # ===================
         torch.set_grad_enabled(True)
-        m['runner'].run_epoch(dataloader_train, model, criterion, optimizer, epoch, stage_args, part='train', writer=writer, saver=saver)
+        m['runner'].run_epoch(dataloader_train, model, criterion, optimizer, epoch, stage_args, phase='train', writer=writer, saver=saver)
         
 
 
@@ -200,7 +205,7 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
             model.train()
 
         torch.set_grad_enabled(False)
-        val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, stage_args, part='val', writer=writer, saver=saver)
+        val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, stage_args, phase='val', writer=writer, saver=saver)
         
         scheduler.step(val_loss)
 

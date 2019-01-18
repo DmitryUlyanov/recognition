@@ -5,6 +5,26 @@ import numpy as  np
 from utils.task_queue import TaskQueue
 import os
 import shutil
+from collections import defaultdict
+
+class Meter:
+    def __init__(self):
+        super().__init__()
+        self.data = defaultdict(list)
+        self.accumulated = ['topk']
+
+    def update(self, name, val):
+        self.data[name].append(val)
+
+    def get_avg(self, name):
+        if name in self.accumulated:
+            return self.get_last(name)
+
+        return np.mean(self.data[name])
+
+    def get_last(self, name):
+        return self.data[name][-1]
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -149,37 +169,6 @@ def get_grid(*args, sz = 256):
 
 
 
-
-
-def npz_per_item(data, path, args):
-    """
-    Saves predictions to npz format, using one npy per sample,
-    and sample names as keys
-    :param output: Predictions by sample names
-    :param path: Path to resulting npz
-    """
-
-    np.savez_compressed(path, **data)
-
-
-def tensor_to_np_recursive(data):
-
-    if isinstance(data, torch.Tensor): 
-        return data.detach().cpu().numpy() 
-    elif isinstance(data, dict):
-        for k in data.keys():
-            data[k] = tensor_to_np_recursive(data[k])
-
-        return data
-
-    elif isinstance(data, (tuple, list)):
-        for i in range(len(data)):
-            data[i] = tensor_to_np_recursive(data[i])
-
-        return data
-    else:
-        return data
-
 def tensor_to_device_recursive(data):
 
     if isinstance(data, torch.Tensor): 
@@ -198,61 +187,9 @@ def tensor_to_device_recursive(data):
     else:
         return data
 
-def npz_per_batch(data, save_dir, args, iteration):
-    """
-    Saves predictions to npz format, using one npy per sample,
-    and sample names as keys
-    :param output: Predictions by sample names
-    :param path: Path to resulting npz
-    """
-
-    data = tensor_to_np_recursive(data)
-    path = f'{save_dir}/{iteration}.npz'
-
-    np.savez_compressed(path, **data)
-
-    data=None
-
-from PIL import Image 
-
-def img_per_item(data, save_dir, args, iteration):
-    """
-    Saves predictions to npz format, using one npy per sample,
-    and sample names as keys
-    :param output: Predictions by sample names
-    :param path: Path to resulting npz
-    """
-
-    data = tensor_to_np_recursive(data)
-    path = f'{save_dir}/{iteration}.npz'
-
-    for pred, name in zip(data['output'], data['names']):
-        img_to_save = (pred.transpose(1,2,0) * 255).astype(np.uint8)
-        Image.fromarray(img_to_save).save(f'{save_dir}/{os.path.basename(name).split(".")[0]:>04}.png')  
-
-    # np.savez_compressed(path, **data)
-
-    # data=None
 
 
 
-from collections import defaultdict
-class Meter:
-    def __init__(self):
-        super().__init__()
-        self.data = defaultdict(list)
-        self.accumulated = ['topk']
-    # def __getitem__(self, val):
 
 
-    def update(self, name, val):
-        self.data[name].append(val)
 
-    def get_avg(self, name):
-        if name in self.accumulated:
-            return self.get_last(name)
-
-        return np.mean(self.data[name])
-
-    def get_last(self, name):
-        return self.data[name][-1]

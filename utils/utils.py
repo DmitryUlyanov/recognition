@@ -40,9 +40,11 @@ def setup(args):
 
 def parse_dict(s):
     d = {}
-    for entry in s.split("^"):
-        k, v = entry.split('=')
-        d[k] = eval(v)
+
+    if len(s) > 0:
+        for entry in s.split("^"):
+            k, v = entry.split('=')
+            d[k] = eval(v)
 
     return d
 
@@ -56,7 +58,7 @@ def get_optimizer(args, model):
     params_to_optimize = [p for p in model.parameters() if p.requires_grad]
     
     s = sum([np.prod(list(p.size())) for p in params_to_optimize])
-    print (f'Number of params: {s}')
+    print (f' - Number of params: {s}')
 
     optimizer = utils.optimizers.get_optimizer(args.optimizer)(params_to_optimize, **optimizer_args)
     
@@ -68,7 +70,7 @@ def get_scheduler(args, optimizer):
     scheduler_args = parse_dict(args.scheduler_args)
     
     scheduler = utils.optimizers.get_scheduler(args.scheduler)(optimizer, **scheduler_args)
-    print(scheduler)
+    
     return scheduler
 
 
@@ -108,15 +110,15 @@ def get_args_and_modules(parser, phase='train'):
     args, default_args = parser.parse_args(), parser.parse_args([])
 
     args_dict = vars(args)
-    if phase == 'test':
-        saved_args = load_yaml(f'{args.experiment_dir}/args.yaml')
-        print(saved_args)
-        for k in saved_args.keys():
-            if k not in args_dict:
-                print(k)
-                args_dict[k] = saved_args[k]
+    # if phase == 'test':
+    #     saved_args = load_yaml(f'{args.experiment_dir}/args.yaml')
+    #     print(saved_args)
+    #     for k in saved_args.keys():
+    #         if k not in args_dict:
+    #             print(k)
+    #             args_dict[k] = saved_args[k]
 
-        args = argparse.Namespace(**args_dict)
+    #     args = argparse.Namespace(**args_dict)
 
     return args, default_args, dict(runner=m_runner, dataloader=m_dataloader, model=m_model)
 

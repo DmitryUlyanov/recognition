@@ -1,6 +1,6 @@
 import torch
 from models.LSUV import LSUVinit
-from huepy import red, yellow
+from huepy import red, yellow, orange
 from utils.utils import load_module
 from munch import munchify
 from models.common import set_param_grad
@@ -65,8 +65,7 @@ class Model:
 
         for path in options:
             if path.exists():
-                checkpoint_path = args.checkpoint
-                break
+                return path
         else:
             assert False, red('Checkpoint path was set, but not found. \n'  + str(options))
 
@@ -83,6 +82,7 @@ class Model:
             state_dict = state_dict['state_dict']
         
         if args.checkpoint_load_only_extractor:
+            print(orange(f' !!! Removing predictor weights from the loaded state.'))
             state_dict = {k: v for k, v in state_dict.items() if not k.startswith('predictor')}
 
         model.load_state_dict(state_dict, strict=args.checkpoint_strict_load_state)
@@ -102,7 +102,7 @@ class Model:
         # Load checkpoint 
         if args.checkpoint is not None:
             
-            checkpoint_path = self.get_checkpoint_path()
+            checkpoint_path = self.get_checkpoint_path(args)
             model = self.load_state(args, checkpoint_path, model)
         else:
             model = self.init_weights(args, model, train_dataloader)
@@ -188,7 +188,8 @@ def save_model(model, epoch, args, optimizer=None, stage_num=0):
         with gzip.open(f'{save_path}.gz', 'wb') as f:
             torch.save(dict_to_save, f, pickle_protocol=-1)
 
-    torch.save(dict_to_save, save_path, pickle_protocol=-1)
+    else:
+        torch.save(dict_to_save, save_path, pickle_protocol=-1)
 
 
 
