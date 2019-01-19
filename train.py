@@ -1,29 +1,32 @@
-import argparse
-import importlib
-import os
-import torch
-from utils.argparse_utils import MyArgumentParser
-from models.model import save_model
-from huepy import yellow 
-from munch import munchify
 
-import torch.multiprocessing
-torch.multiprocessing.set_sharing_strategy('file_system')
 
-# if __name__ == '__main__':
+
     # torch.multiprocessing.set_start_method("forkserver")
+# if __name__ == '__main__':
 
-import models.criterions as criterions
-import json
-from utils.utils import setup, get_optimizer, get_args_and_modules, get_scheduler
-from utils.io_utils import save_yaml
 from exp_logger import setup_logging
-import signal
-import time
-import sys
+from huepy import yellow 
+from models.model import save_model
+from munch import munchify
 from pathlib import Path
+from utils.argparse_utils import MyArgumentParser
+from utils.io_utils import save_yaml
+from utils.utils import setup, get_optimizer, get_args_and_modules, get_scheduler
+
+import argparse
 import colored_traceback.auto
+import importlib
+import json
+import models.criterions as criterions
+import os
+import signal
+import sys
+import time
+import torch
+import torch.multiprocessing
 import utils.savers as savers
+
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 # def exit_gracefully(signum, frame):
 #     # restore the original signal handler as otherwise evil things will happen
@@ -62,7 +65,6 @@ parser.add('--runner',     type=str, default="", help='')
 
 parser.add('--experiments_dir', type=Path, default="experiments", help='')
 
-
 # Criterion 
 parser.add('--criterion',      type=str, default="", help='')
 parser.add('--criterion_args', type=str, default="",  help='separated with "^" list of args i.e. "lr=1e-3^betas=(0.5,0.9)"')
@@ -75,27 +77,23 @@ parser.add('--optimizer_args', type=str, default="lr=3e-3^momentum=0.9")
 parser.add('--scheduler', type=str, default='ReduceLROnPlateau', help='Just any type of comment')
 parser.add('--scheduler_args', default="factor=0.5^min_lr=1e-6^verbose=True^patience=3", type=str, help='separated with "^" list of args i.e. "lr=1e-3^betas=(0.5,0.9)"')
 
-
-parser.add('--save_frequency',  type=int, default=1, help='')
-parser.add('--random_seed',     type=int, default=123, help='')
-parser.add('--comment',         type=str, default='', help='Just any type of comment')
+# Training loop
+parser.add('--stage', type=str, default=None)
 parser.add('--num_epochs',      type=int, default=200)
-
-
-parser.add('--logging', default=True, action="store_bool")
-parser.add('--args-to-ignore', type=str, default="checkpoint,splits_dir,experiments_dir,extension")
-
-
 parser.add('--set_eval_mode_in_train', action='store_bool', default=False)
 parser.add('--set_eval_mode_in_test',  action='store_bool', default=True)
+parser.add('--set_eval_mode_epoch', default=-1, type=int)
+parser.add('--save_frequency',  type=int, default=1, help='')
 
+# Logging
+parser.add('--logging', default=True, action="store_bool")
+parser.add('--args-to-ignore', type=str, default="checkpoint,splits_dir,experiments_dir,extension")
+parser.add('--comment',         type=str, default='', help='Just any type of comment')
 
+# Misc
+parser.add('--random_seed',     type=int, default=123, help='')
 parser.add('--device', type=str, default='cuda')
 
-
-parser.add('--set_eval_mode_epoch', default=-1, type=int)
-
-parser.add('--stage', type=str, default=None)
 
 
 

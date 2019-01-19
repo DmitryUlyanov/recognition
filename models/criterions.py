@@ -1,14 +1,15 @@
-from tqdm import tqdm
 from huepy import red
-import numpy as np
-import torch
-import os 
-
 from torch import nn
-import torch.nn.functional as fnn
 from torch.nn.modules.loss import _Loss
+from tqdm import tqdm
+
+import numpy as np
+import os 
 import sys
+import torch
 import torch.nn.functional as F
+import torch.nn.functional as fnn
+
 # import encoding.nn
 
 # from models.DataParallelCriterion import DataParallelCriterion
