@@ -22,9 +22,12 @@ class Model:
             return models.wrappers.__dict__[model_name]
         else:
 
-            m = load_module_(extension, 'models', 'wrappers')
-            return m.__dict__[model_name]
+            m = load_module_(extension, 'models', 'wrappers', raise_error=False)
 
+            if m is None:
+                m = load_module_(extension, 'models', model_name)
+
+            return m.__dict__[model_name]
 
     def get_args(self, parser):
         parser.add('--checkpoint',      type=Path)

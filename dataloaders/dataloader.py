@@ -15,22 +15,21 @@ from imgaug import augmenters as iaa
 from dataloaders.augmenters import Identity, sometimes, often, ImgAugTransform, ResizeCV2, GaussianBlurCV2
 
 from dataloaders.common import inin_w
-
+from utils.utils import load_module_
 
 
 class Dataloader:
-    def __init__(self, dataset_name):
-        self.dataset_name = dataset_name
-        self.dataset = self.find_definition()
+    def __init__(self, dataset_name, extension):
+        # self.dataset_name = dataset_name
+        self.dataset = self.find_definition(dataset_name, extension)
 
-    def find_definition(self):
-        if self.dataset_name in dataloaders.datasets.__dict__:
-            return dataloaders.datasets.__dict__[self.dataset_name]
-        else:
-            assert False, 'Cannot find dataset'
+    def find_definition(self, dataset_name, extension):
+        
+        m = load_module_(extension, 'dataloaders', dataset_name)
+        return m.__dict__['Dataset']
             
 
-    def get_args(parser):
+    def get_args(self, parser):
         parser.add('--num_workers', type=int, default=4,   help='Number of data loading workers.')
         parser.add('--batch_size',  type=int, default=64,  help='Batch size')
         parser.add('--num_samples_train',  type=int, default=10000, help='Image size')
@@ -38,7 +37,7 @@ class Dataloader:
         # parser.add('--sampler',  type=int, default=10000, help='Image size')
         # parser.add('--sampler_args',  type=int, default=10000, help='Image size')
         
-        return self.dataset.get_args(loadparser)
+        return self.dataset.get_args(parser)
 
 
     def get_dataloader(self, args, model_native_transform, part, phase, sampler=None):
@@ -50,10 +49,10 @@ class Dataloader:
             dataset = self.dataset.get_dataset(args, model_native_transform, part)
 
             if sampler is None: 
-                sampler = torch.utils.data.RandomSampler(part_data, replacement=False)
+                sampler = torch.utils.data.RandomSampler(range(len(dataset)), replacement=False)
 
             if args.num_samples_train != -1: 
-                sampler = torch.utils.data.RandomSampler(part_data, replacement=True, num_samples=args.num_samples_train)
+                sampler = torch.utils.data.RandomSampler(range(len(dataset)), replacement=True, num_samples=args.num_samples_train)
 
             return DataLoader(
                             dataset,
