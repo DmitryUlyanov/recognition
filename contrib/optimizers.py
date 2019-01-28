@@ -1,12 +1,13 @@
 import math
 import torch
 from torch.optim.optimizer import Optimizer
+from utils.utils import parse_dict
 
 from huepy import red
 import torch
 import sys
 
-def get_optimizer(name):
+def get_optimizer_class(name):
     if name in sys.modules[__name__].__dict__:
         return sys.modules[__name__].__dict__[name]
     elif name in torch.optim.__dict__:
@@ -15,6 +16,20 @@ def get_optimizer(name):
         assert False, red(f"Cannot find optimizer with name {name}")
 
 
+def get_optimizer(args, model):
+    
+    # Parse parameters
+    optimizer_args = parse_dict(args.optimizer_args)
+   
+
+    params_to_optimize = [p for p in model.parameters() if p.requires_grad]
+    
+    s = sum([np.prod(list(p.size())) for p in params_to_optimize])
+    print (f' - Number of params: {s}')
+
+    optimizer = get_optimizer_class(args.optimizer)(params_to_optimize, **optimizer_args)
+    
+    return optimizer
 
 
 

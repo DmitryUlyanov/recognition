@@ -10,6 +10,7 @@ from pathlib import Path
 
 import models.wrappers
 import os 
+from utils.utils import load_module_
 
 class Model:
     def __init__(self, model_name, extension):
@@ -21,12 +22,9 @@ class Model:
             return models.wrappers.__dict__[model_name]
         else:
 
-            m = load_module_(extension, 'models', model_name)
+            m = load_module_(extension, 'models', 'wrappers')
             return m.__dict__[model_name]
 
-        else:
-            assert False, 'Cannot find model wrapper'
-            
 
     def get_args(self, parser):
         parser.add('--checkpoint',      type=Path)

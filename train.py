@@ -15,6 +15,8 @@ from utils.utils import setup, get_args_and_modules
 
 from contrib.optimizers import get_optimizer
 from contrib.schedulers import get_scheduler
+from contrib.savers     import get_saver
+
 from contrib.criterions.criterions import get_criterion
 
 import argparse
@@ -28,7 +30,7 @@ import sys
 import time
 import torch
 import torch.multiprocessing
-import utils.savers as savers
+
 
 torch.multiprocessing.set_sharing_strategy('file_system')
 
@@ -136,7 +138,7 @@ criterion = get_criterion(args.criterion, args).to(args.device)
 model = m['model'].get_net(args, dataloader_train, criterion)
 
 # Load saver
-saver = savers.get_saver('DummySaver')
+saver = get_saver('DummySaver')
 
 # Dump args (if modified)
 save_yaml(vars(args), f'{args.experiment_dir}/args_modified.yaml')
@@ -151,6 +153,9 @@ def set_param_grad(model, value, set_eval_mode=True):
     if set_eval_mode:
         model.eval()
 
+
+if 'stages' not in vars(args): 
+    args.stages = {'main': {}}
 
 
 if args.stage is not None:
@@ -169,7 +174,7 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
 
 
     # if stage_args.fix_feature_extractor:
-    set_param_grad(model.module.feature_extractor, value=not stage_args.fix_feature_extractor, set_eval_mode=False)
+    # set_param_grad(model.module.feature_extractor, value=not stage_args.fix_feature_extractor, set_eval_mode=False)
     # set_param_grad(model.module.feature_extractor[-1], value=True, set_eval_mode=False)
     
 

@@ -6,7 +6,11 @@ import cv2
 import numpy as np 
 import random 
 import torch
-import jpeg4py
+
+try:
+    import jpeg4py                    
+except ImportError:
+    pass
 
 
 def is_image_file(filename):
@@ -37,7 +41,12 @@ def get_image_pil(path):
 def inin_w(worker_id):
     np.random.seed(random.randint(0, 2**31))
 
+
 def uint2float(img, dtype_float=np.float32):
+    any2float(img, dtype_float)
+
+
+def any2float(img, dtype_float=np.float32):
     out = img.astype(dtype_float)
     if img.dtype == np.uint16:
         out /= 65535.
@@ -46,9 +55,12 @@ def uint2float(img, dtype_float=np.float32):
 
     return out
 
-class ToTensor16(object):
+
+
+class ToTensor(object):
     def __call__(self, pic):
-        return torch.from_numpy(uint2float(pic.transpose(2, 0, 1)))
+
+        return torch.from_numpy(any2float(pic.transpose(2, 0, 1)))
 
     def __repr__(self):
         return self.__class__.__name__ + '()'
@@ -86,3 +98,17 @@ class FilteringCollateFn:
             return result
         else:
             return default_collate(batch)
+
+
+
+def get_part_data(args, part):
+    if part == 'test':
+        if args.test_csv == "":
+            test_csv_path = f"{args.splits_dir}/test.csv"
+        else:
+            test_csv_path  = args.test_csv
+
+        return pd.read_csv(test_csv_path)
+
+    else:
+        return pd.read_csv(f"{args.splits_dir}/{part}.csv")

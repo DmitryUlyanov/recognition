@@ -13,7 +13,7 @@ import re
 import argparse
 from huepy import red, green
 from .io_utils import load_yaml, save_yaml
-import utils.optimizers
+# import utils.optimizers
 
 
 FILE_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -49,29 +49,6 @@ def parse_dict(s):
     return d
 
 
-def get_optimizer(args, model):
-    
-    # Parse parameters
-    optimizer_args = parse_dict(args.optimizer_args)
-   
-
-    params_to_optimize = [p for p in model.parameters() if p.requires_grad]
-    
-    s = sum([np.prod(list(p.size())) for p in params_to_optimize])
-    print (f' - Number of params: {s}')
-
-    optimizer = utils.optimizers.get_optimizer(args.optimizer)(params_to_optimize, **optimizer_args)
-    
-    return optimizer
-
-def get_scheduler(args, optimizer):
-
-    # Parse parameters
-    scheduler_args = parse_dict(args.scheduler_args)
-    
-    scheduler = utils.optimizers.get_scheduler(args.scheduler)(optimizer, **scheduler_args)
-    
-    return scheduler
 
 
 def get_args_and_modules(parser, phase='train'):
