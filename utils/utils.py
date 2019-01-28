@@ -195,18 +195,10 @@ def load_config(extension, config_name, args):
 #     return model
 
 
-
-def load_module(extension, module_type, module_name):
+def load_module_(extension, module_type, module_name):
     '''
         module_type : models | dataloaders 
     '''
-    cdir = os.getcwd()
-    os.chdir(RECOGNITION_PATH)
-
-    if module_type == 'models':
-        # print('2222222222222222')
-        from models.model import Model
-        return Model(module_name) 
 
 
     if extension == '':
@@ -224,6 +216,25 @@ def load_module(extension, module_type, module_name):
             else:
                 assert False, red(f"Default or extension module {module_name} not found.")
 
+    return m
+
+
+
+
+def load_module(extension, module_type, module_name):
+    '''
+        module_type : models | dataloaders 
+    '''
+    cdir = os.getcwd()
+    os.chdir(RECOGNITION_PATH)
+
+    if module_type == 'models':
+        # print('2222222222222222')
+        from models.model import Model
+        return Model(module_name, extension) 
+
+    m = load_module_(extension, module_type, module_name)
+    
     os.chdir(cdir)
 
     return m

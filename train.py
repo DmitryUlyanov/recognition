@@ -113,9 +113,6 @@ if args.logging:
                                                 exp_name_use_date=True)
 
     args.experiment_dir = Path(args.experiment_dir)
-# else:
-#     args.experiment_dir = Path('/tmp/recognition')
-#     writer = SummaryWriter(log_dir = args.experiment_dir, filename_suffix='_train')
 
 
 # Dump args

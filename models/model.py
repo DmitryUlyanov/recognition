@@ -12,13 +12,18 @@ import models.wrappers
 import os 
 
 class Model:
-    def __init__(self, model_name):
-        self.model_name = model_name
-        self.net_wrapper = self.find_definition()
+    def __init__(self, model_name, extension):
+        # self.model_name = model_name
+        self.net_wrapper = self.find_definition(model_name, extension)
 
-    def find_definition(self):
-        if self.model_name in models.wrappers.__dict__:
-            return models.wrappers.__dict__[self.model_name]
+    def find_definition(self, model_name, extension):
+        if model_name in models.wrappers.__dict__:
+            return models.wrappers.__dict__[model_name]
+        else:
+
+            m = load_module_(extension, 'models', model_name)
+            return m.__dict__[model_name]
+
         else:
             assert False, 'Cannot find model wrapper'
             
