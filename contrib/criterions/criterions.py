@@ -3,6 +3,11 @@ from torch import nn
 from torch.nn.modules.loss import _Loss
 from tqdm import tqdm
 
+from contrib.criterions.focal_loss import *
+from contrib.criterions.huber_loss import *
+from contrib.criterions.lovasz_losses import lovasz_hinge, lovasz_loss_ignore_empty
+
+
 import numpy as np
 import os 
 import sys
@@ -268,7 +273,6 @@ class CriterionList(_Loss):
 
 
 
-from models.src.lovasz_losses import lovasz_hinge, lovasz_loss_ignore_empty
 
 def symmetric_lovasz(outputs, targets):
     return (lovasz_hinge(outputs, targets) + lovasz_hinge(-outputs, 1 - targets)) / 2

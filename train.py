@@ -11,13 +11,17 @@ from munch import munchify
 from pathlib import Path
 from utils.argparse_utils import MyArgumentParser
 from utils.io_utils import save_yaml
-from utils.utils import setup, get_optimizer, get_args_and_modules, get_scheduler
+from utils.utils import setup, get_args_and_modules
+
+from contrib.optimizers import get_optimizer
+from contrib.schedulers import get_scheduler
+from contrib.criterions.criterions import get_criterion
 
 import argparse
 import colored_traceback.auto
 import importlib
 import json
-import models.criterions as criterions
+
 import os
 import signal
 import sys
@@ -128,7 +132,7 @@ dataloader_val         = m['dataloader'].get_dataloader(args, model_native_trans
 
 
 # Load criterion
-criterion = criterions.get_criterion(args.criterion, args).to(args.device)
+criterion = get_criterion(args.criterion, args).to(args.device)
 
 
 # Load model 

@@ -18,7 +18,7 @@ from dataloaders.common import inin_w
 
 
 
-class Model:
+class Dataloader:
     def __init__(self, dataset_name):
         self.dataset_name = dataset_name
         self.dataset = self.find_definition()
@@ -34,19 +34,23 @@ class Model:
         parser.add('--num_workers', type=int, default=4,   help='Number of data loading workers.')
         parser.add('--batch_size',  type=int, default=64,  help='Batch size')
         parser.add('--num_samples_train',  type=int, default=10000, help='Image size')
+
+        # parser.add('--sampler',  type=int, default=10000, help='Image size')
+        # parser.add('--sampler_args',  type=int, default=10000, help='Image size')
         
         return self.dataset.get_args(loadparser)
 
 
-    def get_dataloader(self, args, model_native_transform, part):
+    def get_dataloader(self, args, model_native_transform, part, phase, sampler=None):
         
         if hasattr(self.dataset, 'get_dataloader'):
-            return self.dataset.get_dataloader(args, model_native_transform, part)
+            return self.dataset.get_dataloader(args, model_native_transform, part, phase)
         else:
             
             dataset = self.dataset.get_dataset(args, model_native_transform, part)
 
-            sampler = torch.utils.data.RandomSampler(part_data, replacement=False)
+            if sampler is None: 
+                sampler = torch.utils.data.RandomSampler(part_data, replacement=False)
 
             if args.num_samples_train != -1: 
                 sampler = torch.utils.data.RandomSampler(part_data, replacement=True, num_samples=args.num_samples_train)
@@ -55,9 +59,9 @@ class Model:
                             dataset,
                             batch_size=args.batch_size,
                             num_workers=args.num_workers,
-                            sampler=sampler if part == 'train' else None,
+                            sampler=sampler if phase == 'train' else None,
                             pin_memory=True,
-                            drop_last=False if part == 'train' else False,
+                            drop_last=True if phase == 'train' else False,
                             shuffle=None if part == 'train' else False,
                             worker_init_fn=inin_w)
 

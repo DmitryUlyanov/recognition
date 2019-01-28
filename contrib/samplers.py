@@ -1,6 +1,17 @@
 import numpy as np
 from torch.utils.data.sampler import Sampler
 
+def get_sampler(name):
+    if name in sys.modules[__name__].__dict__:
+        return sys.modules[__name__].__dict__[name]
+    elif name in torch.optim.__dict__:
+        return torch.utils.data.sampler.__dict__[name]
+    else:
+        assert False, red(f"Cannot find sampler with name {name}")
+
+
+
+
 class StratifiedBatchSampler(Sampler):
     def __init__(self, labels, num_batches, batch_size, proportions=None, replacement=False):
         # super().__init__(data_source)

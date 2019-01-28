@@ -6,9 +6,12 @@ import cv2
 import numpy as np 
 import random 
 import torch
+import jpeg4py
+
 
 def is_image_file(filename):
     return any(filename.lower().endswith(extension) for extension in [".png", ".jpg", ".jpeg"])
+
 
 def get_image_cv2(path, force_3channels=False):
     img = cv2.imread(path, -1)
@@ -22,6 +25,11 @@ def get_image_cv2(path, force_3channels=False):
         
     return img
 
+
+def get_image_jpegturbo(path):
+    return jpeg4py.JPEG(path)
+
+
 def get_image_pil(path):
     img = Image.open(path).convert('RGB')
     return img
@@ -29,8 +37,8 @@ def get_image_pil(path):
 def inin_w(worker_id):
     np.random.seed(random.randint(0, 2**31))
 
-def uint2float(img):
-    out = img.astype(np.float32)
+def uint2float(img, dtype_float=np.float32):
+    out = img.astype(dtype_float)
     if img.dtype == np.uint16:
         out /= 65535.
     elif img.dtype == np.uint8:
@@ -40,7 +48,7 @@ def uint2float(img):
 
 class ToTensor16(object):
     def __call__(self, pic):
-        return torch.from_numpy(uint2float(pic.transpose(2, 0, 1)).astype(np.float32))
+        return torch.from_numpy(uint2float(pic.transpose(2, 0, 1)))
 
     def __repr__(self):
         return self.__class__.__name__ + '()'
