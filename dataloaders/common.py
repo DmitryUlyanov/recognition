@@ -11,7 +11,45 @@ import pandas as pd
 try:
     import jpeg4py                    
 except ImportError:
-    pass
+    has_jpeg4py = False
+    print('jpegturbo is unavailable')
+else:
+    has_jpeg4py =True
+
+
+def get_image(image_name):
+    # if datapath is not None:
+    #     image_name = (
+    #         image_name if image_name.startswith(datapath) else
+    #         os.path.join(datapath, image_name)
+    #     )
+
+    img = None
+
+    if has_jpeg4py and image_name.endswith(("jpg", "JPG", "jpeg", "JPEG")):
+        try:
+            img = jpeg4py.JPEG(image_name).decode()
+        except Exception:
+            print('jpeg4py error!')
+            pass
+
+
+    if img is None:
+        img = cv2.imread(image_name)
+
+        if img is None:
+            print(red(path))
+
+        if len(img.shape) == 3:  # BGR -> RGB
+            img = img[:, :, ::-1]
+
+    if len(img.shape) < 3:  # grayscale
+        img = np.expand_dims(img, -1)
+
+    if img.shape[-1] != 3 and not grayscale:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+
+    return img
 
 
 def is_image_file(filename):

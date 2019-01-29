@@ -185,14 +185,35 @@ class ListModule(nn.Module):
 
 
 
+class AdaptiveConcatPool2d(nn.Module):
+    def __init__(self, sz=None):
+        super().__init__()
+        sz = sz or (1,1)
+        self.ap = nn.AdaptiveAvgPool2d(sz)
+        self.mp = nn.AdaptiveMaxPool2d(sz)
+
+    def forward(self, x): 
+        return torch.cat([self.mp(x), self.ap(x)], 1)
+
+
+
 
 class BaseModel(torch.nn.Module):
-    def __init__(self, feature_extractor, predictor):
+    def __init__(self, feature_extractor, predictor, pooling='avg'):
         super(BaseModel, self).__init__()
         
         self.feature_extractor = feature_extractor
         self.predictor = predictor
-        self.pool = torch.nn.AdaptiveAvgPool2d((1, 1))
+
+        if pooling == 'avg':
+            self.pool = torch.nn.AdaptiveAvgPool2d((1, 1))
+        elif pooling == 'max':
+            self.pool = torch.nn.AdaptiveMaxPool2d((1, 1))
+        elif pooling == 'concat':
+            self.pool = torch.nn.AdaptiveConcatPool2d((1, 1))
+        else:
+            raise False
+
 
     def forward(self, input):
         x = self.feature_extractor(input)

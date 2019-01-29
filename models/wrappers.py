@@ -9,10 +9,67 @@ from huepy import yellow
 
 
 from .src import unet
+from .src import resnext
+
 from dataloaders.augmenters import Identity
 import torchvision.transforms as transforms
 import torchvision
 from models.common import MultiHead, BaseModel
+
+
+class ResNext(object):
+    def __init__(self, arg):
+        super(UNet, self).__init__()
+        self.arg = arg
+        
+    @staticmethod
+    def get_args(parser):
+        parser.add('--arch',  choices=['resnext50', 'resnext101', 'resnext101_64', 'resnext152'], default='resnext50')
+        parser.add('--pooling',  choices=['avg', 'max', 'concat'], default='avg')
+
+
+        return parser
+
+    @staticmethod
+    def get_net(args):
+
+        load_pretrained = args.net_init == 'pretrained'
+        if load_pretrained:
+            print(yellow(' - Loading a net, pretrained on ImageNet1k.'))
+
+        model = resnext.__dict__[args.arch](num_classes=1000, pretrained=load_pretrained)
+
+
+        # Extractor
+        feature_extractor = nn.Sequential(
+                                    model.conv1,
+                                    model.bn1,
+                                    model.relu,
+                                    model.maxpool,
+                                    model.layer1,
+                                    model.layer2,
+                                    model.layer3,
+                                    model.layer4)
+
+         
+        # Predictor 
+        predictor = MultiHead(in_features = model.fc.in_features, num_classes=[int(x) for x in args.num_classes.split(',')])
+        if args.dropout_p > 0:
+            predictor = nn.Sequential( nn.Dropout(args.dropout_p), predictor)
+
+
+
+        # Construct
+        model = BaseModel(feature_extractor, predictor, args.pooling)
+
+
+        return model
+
+
+
+
+
+
 
 
 class UNet(object):
@@ -81,7 +138,7 @@ class InceptionV4(object):
 
         load_pretrained = args.net_init == 'pretrained' and args.checkpoint == ""
         if load_pretrained:
-            print(yellow('Loading a net, pretrained on ImageNet1k.'))
+            print(yellow(' - Loading a net, pretrained on ImageNet1k.'))
 
         model = InceptionV4(num_classes=1001, pretrained=load_pretrained)
 
@@ -124,7 +181,7 @@ class ResNet(object):
 
         load_pretrained = args.net_init == 'pretrained'
         if load_pretrained:
-            print(yellow('Loading a net, pretrained on ImageNet1k.'))
+            print(yellow(' - Loading a net, pretrained on ImageNet1k.'))
 
         resnet = torchvision.models.__dict__[args.arch](pretrained=load_pretrained)
 

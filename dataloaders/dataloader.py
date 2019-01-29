@@ -22,7 +22,7 @@ class Dataloader:
     def get_args(self, parser):
         parser.add('--num_workers', type=int, default=4,   help='Number of data loading workers.')
         parser.add('--batch_size',  type=int, default=64,  help='Batch size')
-        parser.add('--num_samples_train',  type=int, default=10000, help='Image size')
+        parser.add('--num_samples_train',  type=int, default=-1, help='Image size')
 
         # parser.add('--sampler',  type=int, default=10000, help='Image size')
         # parser.add('--sampler_args',  type=int, default=10000, help='Image size')
