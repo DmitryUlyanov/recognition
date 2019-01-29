@@ -4,62 +4,6 @@ import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 import os
 import sys
-from models.model import get_abstract_net, get_model_args
-from models.criterions import MultiHeadCriterion
-import torchvision.transforms as transforms
-from models.common import NoParam, MultiHead
-from huepy import yellow 
-
-# finetune with lr = 9e-3
-
-@get_model_args
-def get_args(parser):
-    parser.add('--dropout_p',     type=float,  default=0.5,)
-    parser.add('--num_classes',   type=str,    default="")
-
-    return parser
-
-
-@get_abstract_net
-def get_net(args):
-    
-    load_pretrained = args.net_init == 'pretrained' and args.checkpoint == ""
-    if load_pretrained:
-        print(yellow('Loading a net, pretrained on ImageNet1k.'))
-
-    model = InceptionV4(num_classes=1001, pretrained=load_pretrained)
-
-    num_classes = [int(x) for x in args.num_classes.split(',')]
-
-    predictor = MultiHead(in_features = 1536, num_classes=num_classes)
-    # if args.dropout_p > 0:
-    predictor = nn.Sequential( nn.Dropout(args.dropout_p), predictor)
-    
-    model.predictor =  predictor
-
-    return model
-
-
-def get_native_transform():
-    return transforms.Normalize(mean=[0.5, 0.5, 0.5],
-                                 std=[0.5, 0.5, 0.5])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -347,21 +291,3 @@ class InceptionV4(nn.Module):
         if pretrained:
             url = 'http://data.lip6.fr/cadene/pretrainedmodels/inceptionv4-8e4777a0.pth'
             self.load_state_dict(model_zoo.load_url(url))
-
-        self.predictor = self.last_linear
-        self.feature_extractor = self.features
-
-        self.last_linear = None 
-        self.features = None
-
-    def logits(self, features):
-        
-        return x
-
-    def forward(self, input):
-        x = self.feature_extractor(input)
-        x = self.avg_pool(x)
-        x = x.view(x.size(0), -1)
-        x = self.predictor(x)
-        return x
-

@@ -61,18 +61,23 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, phase, write
         #            Logging 
         # ----------------------------
         
+        meter.update('Loss', loss.item())
+
         for loss_name, loss_ in losses_dict.items():
             meter.update(f'Loss_{loss_name}', loss_.item())    
 
         
-        meter.update('Loss', loss.item())
+        
 
         if 'accuracy' in args.metrics:
             accs = accuracy(output, y)
+            
+            meter.update(f'Top1_avg', np.mean(accs))
+
             for i, acc in enumerate(accs):
                 meter.update(f'Top1_{i}',  acc)
 
-            meter.update(f'Top1_avg', np.mean(accs))
+            
 
 
         if phase == 'train':

@@ -10,6 +10,7 @@ from huepy import yellow
 
 from .src import unet
 from .src import resnext
+from .src import inception_v4
 
 from dataloaders.augmenters import Identity
 import torchvision.transforms as transforms
@@ -128,27 +129,31 @@ class InceptionV4(object):
         
     @staticmethod
     def get_args(parser):
-        parser.add('--dropout_p',     type=float,  default=0.5,)
+        parser.add('--dropout_p',     type=float,  default=0.5)
         parser.add('--num_classes',   type=str,    default="")
+        parser.add('--pooling',   choices=['avg', 'max', 'concat'], default='avg')
 
         return parser
 
     @staticmethod
     def get_net(args):
 
-        load_pretrained = args.net_init == 'pretrained' and args.checkpoint == ""
+        load_pretrained = args.net_init == 'pretrained'
         if load_pretrained:
             print(yellow(' - Loading a net, pretrained on ImageNet1k.'))
 
-        model = InceptionV4(num_classes=1001, pretrained=load_pretrained)
+        model = inception_v4.InceptionV4(num_classes=1001, pretrained=load_pretrained)
 
         num_classes = [int(x) for x in args.num_classes.split(',')]
 
+
         predictor = MultiHead(in_features = 1536, num_classes=num_classes)
-        # if args.dropout_p > 0:
         predictor = nn.Sequential( nn.Dropout(args.dropout_p), predictor)
+
         
-        model.predictor =  predictor
+        # Construct
+        model = BaseModel(model.features, predictor, args.pooling)
+
 
         return model
 

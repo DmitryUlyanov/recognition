@@ -161,9 +161,8 @@ class MultiHeadCriterion(_Loss):
             if (len(target.shape) == 1 or target.shape[1] == 1) and input.shape[1] > 1:
                 loss = nn.CrossEntropyLoss(weight=self.weight)
                 losses[i] = loss(input, target)
-            # elif tar.shape[1] == inp.shape[1]:
             else: 
-                # print(tar.shape)
+                print(' !!!!! ' )
                 # loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor(0.00636))
                 # loss = nn.BCEWithLogitsLoss()
                 loss = nn.L1Loss()
