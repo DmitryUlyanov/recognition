@@ -18,6 +18,7 @@ def is_image_file(filename):
     return any(filename.lower().endswith(extension) for extension in [".png", ".jpg", ".jpeg"])
 
 
+
 def get_image_cv2(path, force_3channels=False):
     img = cv2.imread(path, -1)
     if img is None:
@@ -29,6 +30,7 @@ def get_image_cv2(path, force_3channels=False):
         img = np.concatenate([img[:, :, None], img[:, :, None], img[:, :, None]], axis=2)
         
     return img
+
 
 
 def get_image_jpegturbo(path):
@@ -104,10 +106,10 @@ class FilteringCollateFn:
 
 def get_part_data(args, part):
     if part == 'test':
-        if args.test_csv == "":
-            test_csv_path = f"{args.splits_dir}/test.csv"
-        else:
+        if 'test_csv' in vars(args) and args.test_csv != "":
             test_csv_path  = args.test_csv
+        else:
+            test_csv_path = f"{args.splits_dir}/test.csv"
 
         return pd.read_csv(test_csv_path)
 

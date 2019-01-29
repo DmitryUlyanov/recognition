@@ -12,22 +12,37 @@ import models.wrappers
 import os 
 from utils.utils import load_module_
 
+
+def get_wrapper(model_name, extension):
+    if model_name in models.wrappers.__dict__:
+        return models.wrappers.__dict__[model_name]
+    else:
+
+        m = load_module_(extension, 'models', 'wrappers', raise_error=False)
+        # print(m )
+        if m is None:
+            m = load_module_(extension, 'models', model_name)
+
+
+        return m.__dict__[model_name]
+
 class Model:
     def __init__(self, model_name, extension):
         # self.model_name = model_name
-        self.net_wrapper = self.find_definition(model_name, extension)
+        self.net_wrapper = get_wrapper(model_name, extension)
+        print(self.net_wrapper)
+    # def find_definition(self, model_name, extension):
+    #     if model_name in models.wrappers.__dict__:
+    #         return models.wrappers.__dict__[model_name]
+    #     else:
 
-    def find_definition(self, model_name, extension):
-        if model_name in models.wrappers.__dict__:
-            return models.wrappers.__dict__[model_name]
-        else:
+    #         m = load_module_(extension, 'models', 'wrappers', raise_error=False)
 
-            m = load_module_(extension, 'models', 'wrappers', raise_error=False)
+    #         if m is None:
+    #             m = load_module_(extension, 'models', model_name)
 
-            if m is None:
-                m = load_module_(extension, 'models', model_name)
 
-            return m.__dict__[model_name]
+    #         return m.__dict__[model_name]
 
     def get_args(self, parser):
         parser.add('--checkpoint',      type=Path)

@@ -10,11 +10,14 @@ from utils.argparse_utils import MyArgumentParser
 from utils.utils import setup, get_args_and_modules
 
 from exp_logger import setup_logging, print_experiment_info
-from utils import save_drivers
 from utils import io_utils
-from models import criterions
+
 import colored_traceback.auto
-import utils.savers as savers
+
+from contrib.savers     import get_saver
+from contrib.criterions.criterions import get_criterion
+
+
 from pathlib import Path
 # Define main args
 parser = MyArgumentParser(conflict_handler='resolve')
@@ -31,13 +34,11 @@ parser.add('--experiment_dir', type=Path, help='manual seed')
 
 parser.add('--random_seed', type=int, default=123, help='manual seed')
 
-# parser.add('--experiments_dir', type=str, default="experiments", help='')
 parser.add('--part', type=str, default='val', help='test|val|train')
 
 parser.add('--set_eval_mode', action='store_bool', default=True)
-# parser.add('--config_name', type=str, default="config")
 
-# parser.add('--need_softmax', default=False, action='store_bool')
+
 
 parser.add('--save_driver', default=None, type=str)
 parser.add('--dump_path', default=None, type=str)
@@ -52,6 +53,10 @@ parser.add('--saver_args',  type=str, default='')
 args, default_args, m = get_args_and_modules(parser, phase='test')
 
 
+# args.checkpoint_strict_load_state = True
+
+
+# Do not want to load it from args
 args.checkpoint_load_only_extractor = False
 args.checkpoint_strict_load_state = True
 
@@ -63,13 +68,13 @@ print_experiment_info(args, default_args, args.experiment_dir)
 
 # Load splits and preprocess target
 model_native_transform = m['model'].get_native_transform()
-dataloader = m['dataloader'].get_dataloader(args, model_native_transform, args.part)
+dataloader = m['dataloader'].get_dataloader(args, model_native_transform, part=args.part, phase='test')
 
 
 if args.part == 'test':
-    criterion = criterions.get_criterion('DummyCriterion', args).to(args.device)
+    criterion = get_criterion('DummyCriterion', args).to(args.device)
 else:
-    criterion = criterions.get_criterion(args.criterion, args).to(args.device)
+    criterion = get_criterion(args.criterion, args).to(args.device)
 
 
 # Load model 
@@ -85,6 +90,7 @@ class DummyWriter(object):
     """docstring for DummyWriter"""
     def __init__(self, *args):
         super(DummyWriter, self).__init__()
+        self.last_it = 0
 
     def add_scalar(self, *args):
         pass
@@ -93,7 +99,7 @@ class DummyWriter(object):
         pass   
 
 
-saver = savers.get_saver(args.saver, args.saver_args)
+saver = get_saver(args.saver, args.saver_args)
 
 torch.set_grad_enabled(False)
 loss = m['runner'].run_epoch(

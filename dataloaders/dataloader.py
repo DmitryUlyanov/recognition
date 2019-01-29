@@ -1,18 +1,9 @@
 import torch
-import numpy as np
 import random
 import pandas as pd
-import pickle
-import cv2
-from PIL import Image
-import torchvision.transforms as transforms
 
-from dataloaders.common import get_image_pil
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 
-import imgaug as ia
-from imgaug import augmenters as iaa
-from dataloaders.augmenters import Identity, sometimes, often, ImgAugTransform, ResizeCV2, GaussianBlurCV2
 
 from dataloaders.common import inin_w
 from utils.utils import load_module_
@@ -20,7 +11,6 @@ from utils.utils import load_module_
 
 class Dataloader:
     def __init__(self, dataset_name, extension):
-        # self.dataset_name = dataset_name
         self.dataset = self.find_definition(dataset_name, extension)
 
     def find_definition(self, dataset_name, extension):
@@ -46,7 +36,7 @@ class Dataloader:
             return self.dataset.get_dataloader(args, model_native_transform, part, phase)
         else:
             
-            dataset = self.dataset.get_dataset(args, model_native_transform, part)
+            dataset = self.dataset.get_dataset(args, model_native_transform, part, phase)
 
             if sampler is None: 
                 sampler = torch.utils.data.RandomSampler(range(len(dataset)), replacement=False)

@@ -638,10 +638,9 @@ class EntropyLoss(nn.Module):
 class DummyCriterion(nn.Module):
     def __init__(self, *args, **kwargs):
         super(DummyCriterion, self).__init__()
-        self.out = torch.tensor(0)
 
     def forward(self, input, target):
-        return torch.FloatTensor(0).cuda()
+        return torch.FloatTensor([0]).cuda()
 
 class TVLoss(nn.Module):
     def __init__(self):
