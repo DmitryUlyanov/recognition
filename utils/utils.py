@@ -51,14 +51,18 @@ def parse_dict(s):
 
 
 
-def get_args_and_modules(parser, phase='train'):
+def get_args_and_modules(parser, phase='train', saved_args=None):
     '''
         Gathers args from modules and config
     '''
+
+    if phase == 'test':
+        saved_args = load_saved_args(args_.experiment_dir, args_) if saved_args is None else saved_args
+
     args_, _ = parser.parse_known_args()
 
     # Update main defaults
-    update_defaults_fn = load_saved_args(args_.experiment_dir, args_) if phase == 'test' else load_config(args_.extension, args_.config_name, args_)
+    update_defaults_fn = get_update_defaults_fn(saved_args) if phase == 'test' else load_config(args_.extension, args_.config_name, args_)
     if update_defaults_fn is not None:
         update_defaults_fn(parser)
 
@@ -78,7 +82,7 @@ def get_args_and_modules(parser, phase='train'):
     m_runner = load_module(args_.extension, 'runners', args_.runner)
     m_runner.get_args(parser)
 
-    update_defaults_fn = load_saved_args(args_.experiment_dir, args_) if phase == 'test' else load_config(args_.extension, args_.config_name, args_)
+    update_defaults_fn = get_update_defaults_fn(saved_args) if phase == 'test' else load_config(args_.extension, args_.config_name, args_)
     if update_defaults_fn is not None:
         update_defaults_fn(parser)
 
@@ -105,23 +109,20 @@ def load_saved_args(experiment_dir, args):
 
     print ((f'Using config {green(yaml_config)}'))
 
-    return get_update_defaults_fn(yaml_config, args)
-
-
-def get_update_defaults_fn(yaml_config, args):
-    with open(yaml_config, 'r') as stream:
+    with open(config, 'r') as stream:
         config = yamlenv.load(stream)
 
-    # def fill_templates(config_dict):
-    #     for k in config_dict.keys():
-    #         if isinstance(config_dict[k], str):
-    #             config_dict[k] = re.sub('\$\{(.*?)\}', lambda x: str(vars(args).get(x.groups()[0], '${' + x.groups()[0] + '}')), config_dict[k], flags=re.DOTALL)
-    #         elif isinstance(config_dict[k], dict):
-    #             fill_templates(config_dict[k])
+    return config 
+    
 
+
+def get_update_defaults_fn(config):
+
+    if isinstance(config, str):
+        with open(config, 'r') as stream:
+            config = yamlenv.load(stream)
+       
     def update_defaults_fn(parser):
-        # fill_templates(config)
-
         parser.set_defaults(**config)
         return parser
 
@@ -140,7 +141,7 @@ def load_config(extension, config_name, args):
     for config in [config_extension, config_lib]:
         if os.path.exists(config):
             print ((f'Using config {green(config)}'))
-            return get_update_defaults_fn(config, args)
+            return get_update_defaults_fn(config)
         else:
             print ((f'Did not find config {green(config)}'))
 
@@ -206,7 +207,7 @@ def load_module(extension, module_type, module_name):
         module_type : models | dataloaders 
     '''
     cdir = os.getcwd()
-    os.chdir(RECOGNITION_PATH)
+    # os.chdir(RECOGNITION_PATH)
 
     if module_type == 'models':
         from models.model import Model
@@ -218,7 +219,7 @@ def load_module(extension, module_type, module_name):
 
     m = load_module_(extension, module_type, module_name)
     
-    os.chdir(cdir)
+    # os.chdir(cdir)
 
     return m
 

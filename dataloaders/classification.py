@@ -143,6 +143,12 @@ def train_transform(args):
     seq_geom = iaa.Sequential([
                     iaa.Fliplr(0.5),
                     
+                    sometimes(iaa.Add((-10, 10))), # change brightness of images (by -10 to 10 of original value)
+                    sometimes(iaa.AddToHueAndSaturation((-10, 8))), # change hue and saturation
+                # #         (iaa.PiecewiseAffine(scale=(0.00, 0.02), order=3)),
+                #     sometimes(iaa.ContrastNormalization((0.5, 1.5))),
+                    sometimes(GaussianBlurCV2(sigma=(0, 0.5))),  # blur images with a sigma of 0 to 3.0
+
                     # often(iaa.CropAndPad(
                     #         percent=(-0.05, 0.05),
                     #         pad_mode=ia.ALL,
@@ -158,11 +164,7 @@ def train_transform(args):
                             mode=ia.ALL, # use any of scikit-image's warping modes (see 2nd image from the top for examples)
                             backend='cv2'
                         )),
-                    sometimes(iaa.Add((-10, 10))), # change brightness of images (by -10 to 10 of original value)
-                    sometimes(iaa.AddToHueAndSaturation((-10, 8))), # change hue and saturation
-                # #         (iaa.PiecewiseAffine(scale=(0.00, 0.02), order=3)),
-                #     sometimes(iaa.ContrastNormalization((0.5, 1.5))),
-                    sometimes(GaussianBlurCV2(sigma=(0, 0.5))),  # blur images with a sigma of 0 to 3.0
+           
                 #         (iaa.ElasticTransformation(alpha=(0.0, 1.5), sigma=(9.0, 10))),
                 ])
     

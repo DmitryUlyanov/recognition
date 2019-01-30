@@ -38,8 +38,9 @@ def get_image(image_name):
         img = cv2.imread(image_name)
 
         if img is None:
-            print(red(path))
-
+            print(red(image_name))
+            return None 
+            
         if len(img.shape) == 3:  # BGR -> RGB
             img = img[:, :, ::-1]
 

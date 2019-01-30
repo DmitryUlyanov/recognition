@@ -17,6 +17,8 @@ def get_args(parser):
 
     parser.add('--metrics', type=str, default='')
 
+    parser.add('--detailed_metrics', action='store_bool', default=True)
+
     return parser
 
 
@@ -63,8 +65,9 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, phase, write
         
         meter.update('Loss', loss.item())
 
-        for loss_name, loss_ in losses_dict.items():
-            meter.update(f'Loss_{loss_name}', loss_.item())    
+        if args.detailed_metrics:
+            for loss_name, loss_ in losses_dict.items():
+                meter.update(f'Loss_{loss_name}', loss_.item())    
 
         
         
@@ -74,8 +77,9 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, phase, write
             
             meter.update(f'Top1_avg', np.mean(accs))
 
-            for i, acc in enumerate(accs):
-                meter.update(f'Top1_{i}',  acc)
+            if args.detailed_metrics:
+                for i, acc in enumerate(accs):
+                    meter.update(f'Top1_{i}',  acc)
 
             
 

@@ -1,7 +1,7 @@
 import torch
 from models.LSUV import LSUVinit
 from huepy import red, yellow, orange
-from utils.utils import load_module
+
 from munch import munchify
 from models.common import set_param_grad
 from dataloaders.augmenters import Identity
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import models.wrappers
 import os 
-from utils.utils import load_module_
+from utils.utils import load_module_, load_module
 
 
 def get_wrapper(model_name, extension):
@@ -63,6 +63,8 @@ class Model:
 
         parser.add('--checkpoint_strict_load_state',   default=True, action='store_bool')
         parser.add('--checkpoint_load_only_extractor', default=False, action='store_bool')
+
+        parser.add('--fancy_stuff',                    default=False, action='store_bool')
 
         return self.net_wrapper.get_args(parser)
 
@@ -128,7 +130,9 @@ class Model:
         else:
             model = self.init_weights(args, model, train_dataloader)
       
-        
+        if not args.fancy_stuff:
+            return model
+
         # Some other stuff
         if hasattr(model, 'feature_extractor'):
             value = not args.fix_feature_extractor
@@ -217,38 +221,48 @@ def save_model(model, epoch, args, optimizer=None, stage_num=0):
 
 
 
+from pathlib import Path
 
 def load_model_from_checkpoint(checkpoint_path, args_to_update=None):
 
-        args = vars(torch.load(checkpoint_path)['args'])
+        saved_args = vars(torch.load(checkpoint_path)['args'])
 
-        args['checkpoint'] = checkpoint_path
-        args['net_init'] = 'checkpoint'
-        args['use_all_gpus'] = False
-        args['parallel_criterion'] = False
-        args['freeze_bn'] = False
 
-        if checkpoint_path == 'extensions/rawr/data/lrnet/experiments/10-12,13:20;config_name:lrnet/checkpoints/model_50.pth':
-            args['predictor_config']['return_features'] = False
-            args['processor_config']['num_maps_input'] = 3
-            args['processor_config']['filter_size'] = 3
-            args['processor_config']['model'] += '_'
-        
-        if 'processor_config' in args:    
-            args['processor_config']['freeze_bn'] = False
-        
-        if 'predictor_config' in args:
-            args['predictor_config']['freeze_bn'] = False
+        from utils.argparse_utils import MyArgumentParser
+        parser = MyArgumentParser(conflict_handler='resolve')
+
+        # args, default_args, m = get_args_and_modules(parser, phase='test', saved_args=saved_args)
+
+
+
+        m_model = load_module(saved_args['extension'], 'models', saved_args['model'])
+        m_model.get_args(parser)
+
+
+        args = vars(parser.parse_args())
+        args.update(saved_args)
 
         if args_to_update is not None:
             args.update(args_to_update)
 
-        m_model = load_module(args['extension'], 'models', args['model'])
+        args = munchify(args)
 
-        print(args)
-        model = m_model.get_net(munchify(args), None)
+        # Update
+        args.checkpoint = Path(checkpoint_path)
+        args.net_init   = 'checkpoint'
+        
+        args.checkpoint_load_only_extractor = False
+        args.checkpoint_strict_load_state = True
 
-        return model, args
+        args.use_all_gpus = False
+        args.fancy_stuff  = False
+
+        if args_to_update is not None:
+            args.update(args_to_update)
+
+        model = m_model.get_net(args, None, None)
+
+        return model, m_model, args
 
 
 

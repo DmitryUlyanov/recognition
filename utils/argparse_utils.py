@@ -82,4 +82,7 @@ class MyArgumentParser(argparse.ArgumentParser):
     def __init__(self, **kwargs):
         super(MyArgumentParser, self).__init__(**kwargs)
         self.register('action', 'store_bool', ActionNoYes)
-        self.register('action', 'split_str',  SplitStr)
+        self.register('action', 'split_str',  SplitStr) 
+
+    def add(self, *args, **kwargs):
+        return self.add_argument(*args, **kwargs)

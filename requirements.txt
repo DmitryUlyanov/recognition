@@ -1,6 +1,7 @@
-https://github.com/Infinidat/munch/archive/develop.zip
-https://github.com/aleju/imgaug/archive/master.zip
 pyyaml
+munch
+https://github.com/aleju/imgaug/archive/master.zip
+https://github.com/DmitryUlyanov/yamlenv/archive/master.zip
 huepy
 tensorboardX
 tensorboard
