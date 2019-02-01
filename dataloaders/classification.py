@@ -52,7 +52,9 @@ class Dataset(object):
         # Get how many classes are there
         if 'num_classes' not in vars(args) or args.num_classes == "":
             train_data = get_part_data(args, 'train')
-            merged_data = pd.concat([train_data, part_data], axis=0, ignore_index=True)
+            val_data = get_part_data(args, 'val')
+
+            merged_data = pd.concat([train_data, val_data], axis=0, ignore_index=True)
             args.num_classes = ','.join([str(merged_data.loc[merged_data[x] >= 0, x].max() + 1) for x in target_columns])
 
 

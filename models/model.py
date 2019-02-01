@@ -30,7 +30,7 @@ class Model:
     def __init__(self, model_name, extension):
         # self.model_name = model_name
         self.net_wrapper = get_wrapper(model_name, extension)
-        print(self.net_wrapper)
+        
     # def find_definition(self, model_name, extension):
     #     if model_name in models.wrappers.__dict__:
     #         return models.wrappers.__dict__[model_name]
@@ -64,7 +64,7 @@ class Model:
         parser.add('--checkpoint_strict_load_state',   default=True, action='store_bool')
         parser.add('--checkpoint_load_only_extractor', default=False, action='store_bool')
 
-        parser.add('--fancy_stuff',                    default=False, action='store_bool')
+        parser.add('--fancy_stuff',                    default=True, action='store_bool')
 
         return self.net_wrapper.get_args(parser)
 
