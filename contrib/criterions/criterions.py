@@ -214,7 +214,6 @@ class Hungarian(_Loss):
         
         dist_mat = self.cdist(inputs, target[0])
 
-        # bp()
 
         # 2. Get assignment
         loss = 0
@@ -239,8 +238,8 @@ class CriterionList(_Loss):
         
         self.criterions = [
             # LovaszSoftmaxFlat(),
-            nn.CrossEntropyLoss(), 
-            nn.L1Loss(),
+            # nn.CrossEntropyLoss(), 
+            # nn.L1Loss(),
         ]
 
         if weights is None:
@@ -263,6 +262,29 @@ class CriterionList(_Loss):
 
             losses[i] = criterion(input, target) * weight
            
+        return losses
+
+
+
+
+class ColorRecognitionLoss(_Loss):
+    def __init__(self, num_colors_weight=0.2):
+        super().__init__()
+        
+        self.ce =  nn.CrossEntropyLoss()
+        self.color_loss = Hungarian()
+
+        self.num_colors_weight = num_colors_weight
+
+
+    def forward(self, inputs, targets):
+
+
+        losses = {}
+
+        losses['color'] = self.color_loss(inputs[:-1], targets)['all'] 
+        losses['num_colors'] = self.ce(inputs[-1], targets[1] - 1) * self.num_colors_weight
+        
         return losses
 
 

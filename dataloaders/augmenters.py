@@ -33,8 +33,8 @@ class ImgAugTransform(object):
 
         pil = False
         if isinstance(imgs[0], Image.Image):
-            pil = True
-            imgs = [np.array(img) for img in imgs]
+            pil   = True
+            imgs  = [np.array(img) for img in imgs]
             masks = [np.array(img) for img in masks]
 
 
