@@ -172,8 +172,9 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
 
     stage_args = munchify({**vars(args), **stage_args_ })
 
-    # if stage_args.fix_feature_extractor:
-    set_param_grad(model.module.feature_extractor, value=not stage_args.fix_feature_extractor, set_eval_mode=False)
+    if hasattr(model, 'module'): 
+    #stage_args.fix_feature_extractor:
+        set_param_grad(model.module.feature_extractor, value=not stage_args.fix_feature_extractor, set_eval_mode=False)
         # set_param_grad(model.module.feature_extractor[-1], value=True, set_eval_mode=False)
     
 
