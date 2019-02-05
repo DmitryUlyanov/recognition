@@ -56,10 +56,11 @@ def get_args_and_modules(parser, phase='train', saved_args=None):
         Gathers args from modules and config
     '''
 
-    if phase == 'test':
-        saved_args = load_saved_args(args_.experiment_dir, args_) if saved_args is None else saved_args
 
     args_, _ = parser.parse_known_args()
+
+    if phase == 'test':
+        saved_args = load_saved_args(args_.experiment_dir, args_) if saved_args is None else saved_args
 
     # Update main defaults
     update_defaults_fn = get_update_defaults_fn(saved_args) if phase == 'test' else load_config(args_.extension, args_.config_name, args_)
@@ -109,7 +110,7 @@ def load_saved_args(experiment_dir, args):
 
     print ((f'Using config {green(yaml_config)}'))
 
-    with open(config, 'r') as stream:
+    with open(yaml_config, 'r') as stream:
         config = yamlenv.load(stream)
 
     return config 

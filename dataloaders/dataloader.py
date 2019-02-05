@@ -24,6 +24,9 @@ class Dataloader:
         parser.add('--batch_size',  type=int, default=64,  help='Batch size')
         parser.add('--num_samples_train',  type=int, default=-1, help='Image size')
 
+        parser.add('--train_phase_mode',     default='train="crop,augment"^val="crop"',  action="store_bool")
+        parser.add('--test_phase_mode',      default='crop',  action="store_bool")
+
         # parser.add('--sampler',  type=int, default=10000, help='Image size')
         # parser.add('--sampler_args',  type=int, default=10000, help='Image size')
         

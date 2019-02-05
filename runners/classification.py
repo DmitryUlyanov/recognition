@@ -11,8 +11,6 @@ def get_args(parser):
     parser.add('--log_frequency_loss',   type=int,   default=50)
     parser.add('--log_frequency_images', type=int, default=1000)
 
-
-    parser.add('--niter_in_epoch', type=int, default=0)
     parser.add('--gradient_accumulation', type=int, default=1)
 
     parser.add('--metrics', type=str, default='')
@@ -111,9 +109,6 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, phase, write
         meter.update('Batch time', time.time() - end)
         end = time.time()
 
-
-        if phase == 'train' and args.niter_in_epoch > 0 and it % args.niter_in_epoch == 0 and it > 0:
-            break   
 
     saver.stop()
 
