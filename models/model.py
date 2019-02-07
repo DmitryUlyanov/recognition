@@ -123,7 +123,7 @@ class Model:
 
 
         # Load checkpoint 
-        if args.checkpoint is not None:
+        if args.checkpoint is not None and args.checkpoint != Path('.'):
             
             checkpoint_path = self.get_checkpoint_path(args)
             model = self.load_state(args, checkpoint_path, model)
@@ -239,7 +239,7 @@ def load_model_from_checkpoint(checkpoint_path, args_to_update=None):
         m_model.get_args(parser)
 
 
-        args = vars(parser.parse_args())
+        args = vars(parser.parse_args([]))
         args.update(saved_args)
 
         if args_to_update is not None:

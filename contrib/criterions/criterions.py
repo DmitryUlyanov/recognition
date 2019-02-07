@@ -212,7 +212,7 @@ class Hungarian(_Loss):
 
         inputs = torch.cat([x.unsqueeze(1) for x in input], 1) # B x num(vecs) x len(vec)
         
-        dist_mat = self.cdist(inputs, target[0])
+        dist_mat = self.cdist(inputs, target[0], self.l)
 
 
         # 2. Get assignment
@@ -268,21 +268,21 @@ class CriterionList(_Loss):
 
 
 class ColorRecognitionLoss(_Loss):
-    def __init__(self, num_colors_weight=0.2):
+    def __init__(self, num_colors_weight=0.2, need_sigmoid=True):
         super().__init__()
         
         self.ce =  nn.CrossEntropyLoss()
         self.color_loss = Hungarian()
 
         self.num_colors_weight = num_colors_weight
-
+        self.need_sigmoid = need_sigmoid
 
     def forward(self, inputs, targets):
 
 
         losses = {}
 
-        losses['color'] = self.color_loss(inputs[:-1], targets)['all'] 
+        losses['color'] = self.color_loss([torch.sigmoid(x) if self.need_sigmoid else x for x in inputs[:-1]], targets)['all'] 
         losses['num_colors'] = self.ce(inputs[-1], targets[1] - 1) * self.num_colors_weight
         
         return losses

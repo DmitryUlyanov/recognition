@@ -57,9 +57,8 @@ class Dataset(object):
             merged_data = pd.concat([train_data, val_data], axis=0, ignore_index=True)
             args.num_classes = ','.join([str(merged_data.loc[merged_data[x] >= 0, x].max() + 1) for x in target_columns])
 
-
-        augmenter = get_transform(args, phase)
-
+        augmenter = get_transform(args, phase, args.test_phase_mode if phase == 'test' else parse_dict(args.train_phase_mode)[part])
+        
         input_transform = transforms.Compose([
                 augmenter,
                 ToTensor(),
@@ -127,7 +126,7 @@ class CsvDataset(Dataset):
 # -------------------------
 
 
-def get_transform(args, phase):
+def get_transform(args, phase, phase_params):
 
     d = {
         'train': train_transform,
@@ -135,11 +134,30 @@ def get_transform(args, phase):
         'test':  test_transform,    
     }
 
-    return d[phase](args)
+    return d[phase](args, phase_params.split(','))
 
 
 
-def train_transform(args):
+def train_transform(args, phase_params):
+
+
+    if 'crop' in phase_params:
+        cropper_or_resizer = RandomCrop(args.image_size, shared_crop=True)
+    elif 'resize' in phase_params:
+        cropper_or_resizer = ResizeCV2({"height":args.image_size, "width":args.image_size}, cv2.INTER_AREA)
+    else:
+        cropper_or_resizer = iaa.Noop()
+        print(orange(' !!! Not applying any resizing or cropping!'))
+
+
+
+    if 'augment' not in phase_params:
+        print(' !!! No augmentation!')
+        return ImgAugTransform(geom_transform=cropper_or_resizer)
+
+
+
+
 
 
     seq_geom = iaa.Sequential([
@@ -149,8 +167,6 @@ def train_transform(args):
                     sometimes(iaa.AddToHueAndSaturation((-10, 8))), # change hue and saturation
                 # #         (iaa.PiecewiseAffine(scale=(0.00, 0.02), order=3)),
                 #     sometimes(iaa.ContrastNormalization((0.5, 1.5))),
-                    sometimes(GaussianBlurCV2(sigma=(0, 0.5))),  # blur images with a sigma of 0 to 3.0
-
                     # often(iaa.CropAndPad(
                     #         percent=(-0.05, 0.05),
                     #         pad_mode=ia.ALL,
@@ -170,30 +186,33 @@ def train_transform(args):
                 #         (iaa.ElasticTransformation(alpha=(0.0, 1.5), sigma=(9.0, 10))),
                 ])
     
-    if args.crop_or_resize == 'crop':
-        cropper_or_resizer = RandomCrop(args.image_size, shared_crop=True)
-    else:
-        cropper_or_resizer = ResizeCV2({"height":args.image_size, "width":args.image_size}, cv2.INTER_AREA)
+    seq_color = iaa.Sequential([
+             sometimes(GaussianBlurCV2(sigma=(0, 0.5))),  # blur images with a sigma of 0 to 3.0
+    ]) 
+
 
     seq_geom = iaa.Sequential([
                     cropper_or_resizer,
                     seq_geom
-                    ])
+    ])
 
 
-    return ImgAugTransform(geom_transform=seq_geom)
+    return ImgAugTransform(geom_transform=seq_geom, color_transform=seq_color)
 
 
 
 
 
-def val_transform(args):
 
-    if args.crop_or_resize == 'crop':
+def val_transform(args, phase_params):
+
+    if 'crop' in phase_params:
         cropper_or_resizer = RandomCrop(args.image_size, shared_crop=True)
-    else:
+    elif 'resize' in phase_params:
         cropper_or_resizer = ResizeCV2({"height":args.image_size, "width":args.image_size}, cv2.INTER_AREA)
-
+    else:
+        cropper_or_resizer = iaa.Noop()
+        print(orange(' !!! Not applying any resizing or cropping!'))
 
 
     return ImgAugTransform(geom_transform=cropper_or_resizer)
@@ -202,7 +221,7 @@ def val_transform(args):
 
 
 
-def test_transform(args):
+def test_transform(args, phase_params):
     return val_transform(args)
 
 

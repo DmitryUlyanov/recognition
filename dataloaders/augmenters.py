@@ -165,6 +165,58 @@ def RandomCrop(crop_size, shared_crop):
                     shared_crop=shared_crop
     )
 
+# -------------------------------------------------
+# ------------- ShiftHSV  -------------------------
+# -------------------------------------------------
+
+def clip(img, dtype, maxval):
+    return np.clip(img, 0, maxval).astype(dtype)
+
+def shift_hsv_(img, hue_shift, sat_shift, val_shift):
+    dtype = img.dtype
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+    if dtype == np.uint8:
+        img = img.astype(np.int32)
+    hue, sat, val = cv2.split(img)
+    hue = cv2.add(hue, hue_shift)
+    hue = np.where(hue < 0, hue + 180, hue)
+    hue = np.where(hue > 180, hue - 180, hue)
+    hue = hue.astype(dtype)
+    sat = clip(cv2.add(sat, sat_shift), dtype, 255 if dtype == np.uint8 else 1.0)
+    val = clip(cv2.add(val, val_shift), dtype, 255 if dtype == np.uint8 else 1.0)
+    img = cv2.merge((hue, sat, val)).astype(dtype)
+    img = cv2.cvtColor(img, cv2.COLOR_HSV2RGB)
+    return img
+
+def get_crop_xy(hue_shift, sat_shift_range, val_shift, random_state):
+    h, w = img.shape[0], img.shape[1]
+        
+    hue_shift = random_state.randint(hue_shift_range[0], hue_shift_range[1])
+    sat_shift = random_state.randint(sat_shift_range[0], sat_shift_range[1])
+    val_shift = random_state.randint(val_shift_range[0], val_shift_range[1])
+
+    return hue_shift, sat_shift, val_shift
+
+
+def shift_hsv(images, random_state, parents, hooks, **kwargs):
+
+        
+    hue_shift, sat_shift, val_shift = get_shift_params(kwargs['hue_shift'], kwargs['sat_shift'], kwargs['val_shift'], random_state)        
+    
+    out = []
+    for img in images:
+        out.append(shift_hsv_(img, hue_shift, sat_shift, val_shift))
+
+    return out
+
+
+def ShiftHSVRandomCrop(crop_size, shared_crop):
+    return LambdaKW(
+                    func_images=shift_hsv,
+                    func_keypoints=crop_keypoints,
+                    crop_size=crop_size,
+                    shared_crop=shared_crop
+    )
 
 # -------------------------------------------------
 # ------------- Identity  -------------------------

@@ -21,7 +21,7 @@ class MultiHead(nn.Module):
         return len(self._modules)
 
     def forward(self, input):
-        return [head(input) for head in self.heads]
+        return tuple([head(input) for head in self.heads])
 
 
 # class NoParam(nn.Module):
