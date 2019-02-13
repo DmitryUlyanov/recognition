@@ -15,7 +15,7 @@ import json
 import cv2
 from functools import lru_cache
 
-
+from utils.utils import parse_dict
 
 class Dataset(object):
 
