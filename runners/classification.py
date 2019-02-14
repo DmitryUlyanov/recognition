@@ -25,11 +25,15 @@ def run_epoch(dataloader, model, criterion, optimizer, epoch, args, phase, write
     
     meter = Meter()
 
+    f = False
+
     if phase=='train':
         optimizer.zero_grad()
 
     end = time.time()
     for it, data in enumerate(dataloader):
+
+        
 
         # Measure data loading time
         meter.update('Data time', time.time() - end)
