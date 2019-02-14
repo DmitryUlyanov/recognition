@@ -673,3 +673,59 @@ class TVLoss(nn.Module):
         loss = torch.sqrt(loss + self.epsilon).mean()
         return loss
 
+
+
+
+class RGBandXYZ(nn.Module):
+    def __init__(self, w_xyz=1, w_rgb=1):
+        super().__init__()
+        
+        self.criterion_rgb = VGGLoss('caffe')
+        self.criterion_xyz = nn.L1Loss()
+
+        self.w_xyz = w_xyz
+        self.w_rgb = w_rgb
+        # self.criterions = [
+        #     self.criterion1,
+        #     self.criterion2
+        # ]
+
+        # if weights is None:
+        #     self.weights = [1] * len(self.criterions)
+        # else:
+        #     self.weights = weights
+
+    def forward(self, inputs, targets):
+
+        xyz_mask = 1 - targets[:, -1:]
+        
+        # print(xyz_mask.max(), xyz_mask.min())
+        rgb_input,  xyz_input  = [inputs[:, :3],  inputs[:, 3:]]
+        rgb_target, xyz_target = [targets[:, :3], targets[:, 3:6]]
+
+
+        losses = {}
+
+        if self.w_xyz > 0:
+            losses['xyz'] = self.criterion_xyz(xyz_input * xyz_mask, xyz_target * xyz_mask) * self.w_xyz
+        
+        if self.w_rgb > 0:
+            losses['rgb'] = self.criterion_rgb(rgb_input, rgb_target) * self.w_rgb
+        
+
+
+
+        # lens = [len(x) for x in [inputs, targets, self.weights, self.criterions]]
+
+        # assert all([x == lens[0] for x in lens]), print(lens)
+        
+
+        # losses = {}
+        # for i, (input, target, weight, criterion) in enumerate(zip(inputs, targets, self.weights, self.criterions)):
+            
+        #     if target is None or weight == 0:
+        #         continue
+
+        #     losses[i] = criterion(input, target) #* weight
+           
+        return sum(losses.values())

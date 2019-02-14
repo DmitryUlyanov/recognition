@@ -63,7 +63,7 @@ def get_args_and_modules(parser, phase='train', saved_args=None):
         saved_args = load_saved_args(args_.experiment_dir, args_) if saved_args is None else saved_args
 
     # Update main defaults
-    update_defaults_fn = get_update_defaults_fn(saved_args) if phase == 'test' else load_config(args_.extension, args_.config_name, args_)
+    update_defaults_fn = get_update_defaults_fn(saved_args, args_) if phase == 'test' else load_config(args_.extension, args_.config_name, args_)
     if update_defaults_fn is not None:
         update_defaults_fn(parser)
 
@@ -117,11 +117,11 @@ def load_saved_args(experiment_dir, args):
     
 
 
-def get_update_defaults_fn(config):
+def get_update_defaults_fn(config, args = {}):
 
     if isinstance(config, str):
         with open(config, 'r') as stream:
-            config = yamlenv.load(stream)
+            config = yamlenv.load(stream, vars(args))
        
     def update_defaults_fn(parser):
         parser.set_defaults(**config)
@@ -142,7 +142,7 @@ def load_config(extension, config_name, args):
     for config in [config_extension, config_lib]:
         if os.path.exists(config):
             print ((f'Using config {green(config)}'))
-            return get_update_defaults_fn(config)
+            return get_update_defaults_fn(config, args)
         else:
             print ((f'Did not find config {green(config)}'))
 

@@ -44,7 +44,7 @@ class Dataloader:
             if sampler is None: 
                 sampler = torch.utils.data.RandomSampler(range(len(dataset)), replacement=False)
 
-            if args.num_samples_train != -1: 
+            if args.num_samples_train != -1 and phase =='train': 
                 sampler = torch.utils.data.RandomSampler(range(len(dataset)), replacement=True, num_samples=args.num_samples_train)
 
             return DataLoader(
