@@ -28,7 +28,7 @@ def setup(args):
     if args.random_seed is None:
         args.random_seed = random.randint(1, 10000)
 
-    print(" - Random Seed: ", args.random_seed)
+    # print(" - Random Seed: ", args.random_seed)
     random.seed(args.random_seed)
     torch.manual_seed(args.random_seed)
 

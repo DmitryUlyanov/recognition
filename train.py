@@ -4,7 +4,7 @@
     # torch.multiprocessing.set_start_method("forkserver")
 # if __name__ == '__main__':
 
-from exp_logger import setup_logging
+from utils.exp_logger import setup_logging
 from huepy import yellow 
 from models.model import save_model
 from munch import munchify
@@ -185,7 +185,8 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
         import apex 
 
         optimizer = apex.fp16_utils.FP16_Optimizer(optimizer, dynamic_loss_scale=True, verbose=False)
-
+    else:
+        optimizer.backward = lambda x: x.backward()
     # Go
     for epoch in range(0, stage_args.num_epochs):
 

@@ -127,6 +127,7 @@ class LinkNet(object):
     def get_args(parser):
         parser.add('--num_input_channels',  type=int, default=3)
         parser.add('--num_output_channels', type=int, default=3)
+        parser.add('--resnet_depth', type=int, default=34)
 
         parser.add('--freeze_basenet',action='store_bool', default=False)
 
@@ -148,10 +149,12 @@ class LinkNet(object):
     def get_net(args):
 
         load_pretrained = args.net_init == 'pretrained'
+        if load_pretrained:
+            print(yellow(' - Loading a net, pretrained on ImageNet1k.'))
 
         model = linknet.LinkNet(num_input_channels  = args.num_input_channels, 
                                 num_output_channels = args.num_output_channels,
-                                depth=34, 
+                                depth=args.resnet_depth, 
                                 pretrained=load_pretrained)
 
 

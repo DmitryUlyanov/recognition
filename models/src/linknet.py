@@ -76,7 +76,7 @@ class ResNetEncoder(nn.Module):
                     backbone.conv1.bias.data[:, i * 3: (i + 1) * 3] = conv1_.bias.data * scaling_factor
 
             # else:
-                
+
 
 
         self.encoder0 = nn.Sequential(
@@ -177,6 +177,8 @@ class LinkNet(nn.Module):
             self.encoder = ResNetEncoder(models.resnet18, num_input_channels=num_input_channels, pretrained=pretrained)
         elif depth == 34:
             self.encoder = ResNetEncoder(models.resnet34, num_input_channels=num_input_channels, pretrained=pretrained)
+        # elif depth == 50:
+        #     self.encoder = ResNetEncoder(models.resnet50, num_input_channels=num_input_channels, pretrained=pretrained)
         else:
             raise ValueError(f'Unexcpected LinkNet depth: {depth}')
         filters = self.encoder.filters
