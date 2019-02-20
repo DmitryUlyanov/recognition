@@ -28,7 +28,7 @@ def setup(args):
     if args.random_seed is None:
         args.random_seed = random.randint(1, 10000)
 
-    print("Random Seed: ", args.random_seed)
+    print(" - Random Seed: ", args.random_seed)
     random.seed(args.random_seed)
     torch.manual_seed(args.random_seed)
 
@@ -108,7 +108,7 @@ def get_args_and_modules(parser, phase='train', saved_args=None):
 def load_saved_args(experiment_dir, args):
     yaml_config=f'{experiment_dir}/args.yaml'
 
-    print ((f'Using config {green(yaml_config)}'))
+    print ((f' - Using config {green(yaml_config)}'))
 
     with open(yaml_config, 'r') as stream:
         config = yamlenv.load(stream)
@@ -133,7 +133,7 @@ def get_update_defaults_fn(config, args = {}):
 def load_config(extension, config_name, args):
     
     if extension == '':
-        assert False, red(f'Extension is not specified.')
+        assert False, red(f' - Extension is not specified.')
 
 
     config_extension = f'extensions/{extension}/{config_name}.yaml'
@@ -141,12 +141,12 @@ def load_config(extension, config_name, args):
     
     for config in [config_extension, config_lib]:
         if os.path.exists(config):
-            print ((f'Using config {green(config)}'))
+            print ((f' - Using config {green(config)}'))
             return get_update_defaults_fn(config, args)
         else:
-            print ((f'Did not find config {green(config)}'))
+            print ((f' - Did not find config {green(config)}'))
 
-    assert False, red(f'Config not found!')
+    assert False, red(f' - Config not found!')
 
 
 
@@ -185,16 +185,16 @@ def load_module_(extension, module_type, module_name, raise_error=True):
     else:
         if os.path.exists(f'extensions/{extension}/{module_type}/{module_name}.py'):
             m = importlib.import_module(f'extensions.{extension}.{module_type}.{module_name}')
-            print(f"Extension module {green(module_name)} loaded.")
+            print(f" - Extension module {green(module_name)} loaded.")
         else:
             # print(f'Extension module {extension}/{module_type}/{module_name} not found.')
 
             if os.path.exists(f'{module_type}/{module_name}.py'):
                 m = importlib.import_module(f'{module_type}.{module_name}')
-                print((f"Default module {green(module_name)} loaded."))
+                print((f" - Default module {green(module_name)} loaded."))
             else:
                 if raise_error:
-                    assert False, red(f"Default or extension module {module_name} not found.")
+                    assert False, red(f" - Default or extension module {module_name} not found.")
                 else:
                     return None
 

@@ -153,7 +153,7 @@ def get_grid(*args, sz = 256):
 
     grid = []
     for a in args:
-        b = a[:num_img].detach().cpu()
+        b = a[:num_img].detach().cpu().float()
         if b.shape[1] == 1:
             grid.append(torch.cat( [b, b, b], dim=1 ) )
         else: 

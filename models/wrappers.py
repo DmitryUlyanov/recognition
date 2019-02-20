@@ -9,6 +9,7 @@ from huepy import yellow
 
 
 from .src import unet
+from .src import linknet
 from .src import resnext
 from .src import inception_v4
 
@@ -114,6 +115,58 @@ class UNet(object):
 
         return model
 
+
+
+
+class LinkNet(object):
+    def __init__(self, arg):
+        super().__init__()
+        self.arg = arg
+        
+    @staticmethod
+    def get_args(parser):
+        parser.add('--num_input_channels',  type=int, default=3)
+        parser.add('--num_output_channels', type=int, default=3)
+
+        parser.add('--freeze_basenet',action='store_bool', default=False)
+
+
+        # parser.add('--feature_scale', type=int, default=4)
+        # parser.add('--more_layers',   type=int, default=0)
+        # parser.add('--concat_x',      default=False, action='store_bool')
+
+        # parser.add('--upsample_mode', type=str, default="deconv")
+        # parser.add('--pad',           type=str, default="zero")
+
+        # parser.add('--norm_layer', type=str, default="in")
+        
+        # parser.add('--last_act', default='sigmoid',  type=str)
+
+        return parser
+
+    @staticmethod
+    def get_net(args):
+
+        load_pretrained = args.net_init == 'pretrained'
+
+        model = linknet.LinkNet(num_input_channels  = args.num_input_channels, 
+                                num_output_channels = args.num_output_channels,
+                                depth=34, 
+                                pretrained=load_pretrained)
+
+
+        if args.freeze_basenet:
+            model.freeze_basenet()
+        else:
+            model.unfreeze_basenet()
+
+        return model
+
+
+    @staticmethod
+    def get_native_transform():
+        return transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                    std= [0.229, 0.224, 0.225])
 
 
 

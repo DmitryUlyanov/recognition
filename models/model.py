@@ -119,7 +119,8 @@ class Model:
         model = model.to(args.device)
 
         if args.fp16:
-            model = model.half()
+            model = FP16Model(model)
+            # model = model.half()
 
 
         # Load checkpoint 
@@ -193,9 +194,12 @@ def save_model(model, epoch, args, optimizer=None, stage_num=0):
     model_to_save = model
     if isinstance(model, torch.nn.DataParallel):
         model_to_save = model.module
-
+    
     if 'ModelAndLoss' in str(type(model_to_save)):
-        model_to_save = model_to_save.model
+        model_to_save = model.module
+
+    if 'FP16Model' in str(type(model_to_save)):
+        model_to_save = model_to_save.network
 
     dict_to_save = { 
         'state_dict': model_to_save.state_dict(), 
@@ -282,9 +286,34 @@ class ModelAndLoss(torch.nn.Module):
 
 
 
+import apex
 
+class FP16Model(torch.nn.Module):
+    """
+    Convert model to half precision in a batchnorm-safe way.
+    """
 
+    def __init__(self, network, convert_bn=True):
+        super(FP16Model, self).__init__()
 
+        
+
+        self.network = convert_network(network, dtype=torch.half, convert_bn=convert_bn)
+
+    def forward(self, *inputs):
+        inputs = tuple(t.half() for t in inputs)
+        return self.network(*inputs)
+
+def convert_network(network, dtype, convert_bn):
+    """
+    Converts a network's parameters and buffers to dtype.
+    """
+    for module in network.modules():
+        if not convert_bn and isinstance(module, torch.nn.modules.batchnorm._BatchNorm) and module.affine is True:
+            continue
+        apex.fp16_utils.convert_module(module, dtype)
+
+    return network
 
 
 
@@ -293,6 +322,8 @@ class ModelAndLoss(torch.nn.Module):
 
 
 import numpy as np
+
+
 # if state_dict['feature_extractor.0.weight'].shape[1] != args.num_input_channels:
 #     print('Surgery ==============')
 #     t = torch.zeros( (state_dict['feature_extractor.0.weight'].shape[0], args.num_input_channels, state_dict['feature_extractor.0.weight'].shape[2], state_dict['feature_extractor.0.weight'].shape[3]), dtype=torch.float)
