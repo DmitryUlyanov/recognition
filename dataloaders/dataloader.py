@@ -54,7 +54,7 @@ class Dataloader:
                             sampler=sampler if phase == 'train' else None,
                             pin_memory=True,
                             drop_last=True if phase == 'train' else False,
-                            shuffle=None if part == 'train' else False,
+                            shuffle=None if part == 'train' else True,
                             worker_init_fn=inin_w)
 
 
