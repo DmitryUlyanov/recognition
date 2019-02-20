@@ -293,7 +293,7 @@ class FP16Model(torch.nn.Module):
     Convert model to half precision in a batchnorm-safe way.
     """
 
-    def __init__(self, network, convert_bn=True):
+    def __init__(self, network, convert_bn=False):
         super(FP16Model, self).__init__()
 
         

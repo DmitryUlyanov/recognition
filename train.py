@@ -181,6 +181,10 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
     optimizer = get_optimizer(stage_args, model)
     scheduler = get_scheduler(stage_args, optimizer)
 
+    if args.fp16:
+        import apex 
+
+        optimizer = apex.fp16_utils.FP16_Optimizer(optimizer, dynamic_loss_scale=True, verbose=False)
 
     # Go
     for epoch in range(0, stage_args.num_epochs):

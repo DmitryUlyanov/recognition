@@ -29,6 +29,7 @@ def get_optimizer(args, model):
 
     optimizer = get_optimizer_class(args.optimizer)(params_to_optimize, **optimizer_args)
     
+
     return optimizer
 
 

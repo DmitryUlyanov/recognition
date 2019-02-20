@@ -84,8 +84,6 @@ class VGGLoss(nn.Module):
     def forward(self, input, target):
         loss = 0
 
-        target = target.type(input.type())
-
         features_input = self.normalize_inputs(input)
         features_target = self.normalize_inputs(target)
         for layer in self.vgg19:
