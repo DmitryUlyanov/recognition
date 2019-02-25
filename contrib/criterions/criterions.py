@@ -8,6 +8,7 @@ from contrib.criterions.huber_loss import *
 from contrib.criterions.vgg_loss   import VGGLoss
 from contrib.criterions.hungarian_loss   import HungarianLoss
 from contrib.criterions.lovasz_losses import lovasz_hinge, lovasz_loss_ignore_empty
+from contrib.criterions.nn_loss import NNLoss
 
 
 import numpy as np
