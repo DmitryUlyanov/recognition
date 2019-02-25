@@ -120,11 +120,11 @@ def act(act_fun = 'LeakyReLU'):
         return act_fun()
 
 
-def norm(num_features, tp='bn'):
+def norm(num_features, tp='bn', **kwargs):
     if tp == 'bn':
-        return nn.BatchNorm2d(num_features)
+        return nn.BatchNorm2d(num_features, **kwargs)
     elif tp == 'in':
-        return nn.InstanceNorm2d(num_features)
+        return nn.InstanceNorm2d(num_features, **kwargs)
     elif tp == 'none':
         return Identity()
 

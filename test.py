@@ -9,7 +9,7 @@ import torch
 from utils.argparse_utils import MyArgumentParser
 from utils.utils import setup, get_args_and_modules
 
-from exp_logger import setup_logging, print_experiment_info
+from utils.exp_logger import  print_experiment_info
 from utils import io_utils
 
 import colored_traceback.auto

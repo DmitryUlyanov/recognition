@@ -11,6 +11,7 @@ from huepy import yellow
 from .src import unet
 from .src import linknet
 from .src import resnext
+from .src import johnson
 from .src import inception_v4
 
 from dataloaders.augmenters import Identity
@@ -115,6 +116,46 @@ class UNet(object):
 
         return model
 
+class Johnson(object):
+    def __init__(self, arg):
+        super(UNet, self).__init__()
+        self.arg = arg
+        
+    @staticmethod
+    def get_args(parser):
+        parser.add('--num_input_channels',  type=int, default=3)
+        parser.add('--num_output_channels', type=int, default=3)
+
+        parser.add('--feature_scale', type=int, default=4)
+        parser.add('--more_layers',   type=int, default=0)
+        parser.add('--concat_x',      default=False, action='store_bool')
+
+        parser.add('--upsample_mode', type=str, default="deconv")
+        parser.add('--pad',           type=str, default="zero")
+
+        parser.add('--norm_layer', type=str, default="in")
+        
+        parser.add('--last_act', default='sigmoid',  type=str)
+
+        return parser
+
+    @staticmethod
+    def get_net(args):
+
+        model = johnson.TransformerNet(
+                     num_input_channels  = args.num_input_channels,
+                     num_output_channels = args.num_output_channels,
+                     feature_scale       = args.feature_scale, 
+                     # more_layers         = args.more_layers, 
+                     # concat_x            = args.concat_x,
+                     # upsample_mode       = args.upsample_mode, 
+                     # pad                 = args.pad, 
+                     norm_layer          = args.norm_layer, 
+                     # last_act            = args.last_act, 
+                     # need_bias           = True
+        )
+
+        return model
 
 
 

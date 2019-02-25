@@ -104,6 +104,11 @@ class Model:
         if isinstance(state_dict, dict): 
             state_dict = state_dict['state_dict']
         
+        # print(state_dict)
+        # if 
+        # state_dict = {k[6:]: v for k, v in state_dict.items() if k.startswith('model')}
+        # state_dict = {k[6:]: v for k, v in state_dict.items() if k.startswith('model')}
+
         if args.checkpoint_load_only_extractor:
             print(orange(f' !!! Removing predictor weights from the loaded state.'))
             state_dict = {k: v for k, v in state_dict.items() if not k.startswith('predictor')}
@@ -196,7 +201,7 @@ def save_model(model, epoch, args, optimizer=None, stage_num=0):
         model_to_save = model.module
     
     if 'ModelAndLoss' in str(type(model_to_save)):
-        model_to_save = model.module
+        model_to_save = model_to_save.model
 
     if 'FP16Model' in str(type(model_to_save)):
         model_to_save = model_to_save.network
