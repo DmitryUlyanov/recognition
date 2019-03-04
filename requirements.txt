@@ -5,3 +5,4 @@ https://github.com/DmitryUlyanov/yamlenv/archive/master.zip
 huepy
 tensorboardX
 tensorboard
+colored-traceback
