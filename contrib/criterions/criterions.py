@@ -589,3 +589,64 @@ class RGBandXYZ(nn.Module):
         #     losses[i] = criterion(input, target) #* weight
            
         return sum(losses.values())
+
+
+
+
+class RGBandUV(nn.Module):
+    def __init__(self, w_rgb=1, w_uv=1):
+        super().__init__()
+        
+        self.criterion_rgb = VGGLoss('caffe')
+        # self.criterion_rgb = nn.L1Loss()
+
+        self.criterion_uv = nn.MSELoss()
+
+
+        self.w_uv = w_uv
+        self.w_rgb = w_rgb
+        # self.criterions = [
+        #     self.criterion1,
+        #     self.criterion2
+        # ]
+
+        # if weights is None:
+        #     self.weights = [1] * len(self.criterions)
+        # else:
+        #     self.weights = weights
+
+    def forward(self, inputs, targets):
+
+        # xyz_mask = 1 - targets[:, -1:]
+        
+        # print(xyz_mask.max(), xyz_mask.min())
+        rgb_input,  uv_input  = [inputs[:, :3],  inputs[:, 3:]]
+        rgb_target, uv_target = [targets[:, :3], inputs[:, 3:] * 0]
+
+
+        losses = {}
+
+        # if self.w_uv > 0:
+        #     losses['uv'] = self.criterion_uv(uv_input, uv_target) * self.w_uv
+        
+        if self.w_rgb > 0:
+            losses['rgb'] = self.criterion_rgb(rgb_input, rgb_target) * self.w_rgb
+        
+
+
+
+        # lens = [len(x) for x in [inputs, targets, self.weights, self.criterions]]
+
+        # assert all([x == lens[0] for x in lens]), print(lens)
+        
+
+        # losses = {}
+        # for i, (input, target, weight, criterion) in enumerate(zip(inputs, targets, self.weights, self.criterions)):
+            
+        #     if target is None or weight == 0:
+        #         continue
+
+        #     losses[i] = criterion(input, target) #* weight
+           
+        return sum(losses.values())
+
