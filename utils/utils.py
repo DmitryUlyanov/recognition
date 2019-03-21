@@ -178,7 +178,9 @@ def load_module_(extension, module_type, module_name, raise_error=True):
     '''
         module_type : models | dataloaders 
     '''
-
+    cdir = os.getcwd()
+    os.chdir(RECOGNITION_PATH)
+    print(os.getcwd())
 
     if extension == '':
         m = importlib.import_module(f'{module_type}.{module_name}')
@@ -198,6 +200,8 @@ def load_module_(extension, module_type, module_name, raise_error=True):
                 else:
                     return None
 
+    os.chdir(cdir)
+    
     return m
 
 

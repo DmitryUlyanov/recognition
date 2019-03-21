@@ -44,7 +44,7 @@ class Model:
 
     #         return m.__dict__[model_name]
 
-    def get_args(self, parser):
+    def get_args(self, parser, known_args=None):
         parser.add('--checkpoint',      type=Path)
         parser.add('--net_init',        type=str, default="default", help='pretrained|lsuv|default')
         parser.add('--lsuv_batch_size', type=int, default=-1)
@@ -66,7 +66,7 @@ class Model:
 
         parser.add('--fancy_stuff',                    default=True, action='store_bool')
 
-        return self.net_wrapper.get_args(parser)
+        return self.net_wrapper.get_args(parser, known_args)
 
 
     def init_weights(self, args, model, train_dataloader):
@@ -235,7 +235,6 @@ def load_model_from_checkpoint(checkpoint_path, args_to_update=None):
 
         saved_args = vars(torch.load(checkpoint_path)['args'])
 
-
         from utils.argparse_utils import MyArgumentParser
         parser = MyArgumentParser(conflict_handler='resolve')
 
@@ -244,7 +243,7 @@ def load_model_from_checkpoint(checkpoint_path, args_to_update=None):
 
 
         m_model = load_module(saved_args['extension'], 'models', saved_args['model'])
-        m_model.get_args(parser)
+        m_model.get_args(parser, munchify(saved_args))
 
 
         args = vars(parser.parse_args([]))
