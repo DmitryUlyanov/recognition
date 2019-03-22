@@ -5,7 +5,7 @@ import torch.utils.model_zoo as model_zoo
 import os
 import sys
 
-from huepy import yellow 
+from huepy import yellow
 
 
 from .src import unet
@@ -24,7 +24,7 @@ class ResNext(object):
     def __init__(self, arg):
         super(UNet, self).__init__()
         self.arg = arg
-        
+
     @staticmethod
     def get_args(parser):
         parser.add('--arch',  choices=['resnext50', 'resnext101', 'resnext101_64', 'resnext152'], default='resnext50')
@@ -54,8 +54,8 @@ class ResNext(object):
                                     model.layer3,
                                     model.layer4)
 
-         
-        # Predictor 
+
+        # Predictor
         predictor = MultiHead(in_features = model.fc.in_features, num_classes=[int(x) for x in args.num_classes.split(',')])
         if args.dropout_p > 0:
             predictor = nn.Sequential( nn.Dropout(args.dropout_p), predictor)
@@ -79,9 +79,9 @@ class UNet(object):
     def __init__(self, arg):
         super(UNet, self).__init__()
         self.arg = arg
-        
+
     @staticmethod
-    def get_args(parser):
+    def get_args(parser, _=None):
         parser.add('--num_input_channels',  type=int, default=3)
         parser.add('--num_output_channels', type=int, default=3)
 
@@ -93,7 +93,7 @@ class UNet(object):
         parser.add('--pad',           type=str, default="zero")
 
         parser.add('--norm_layer', type=str, default="in")
-        
+
         parser.add('--last_act', default='sigmoid',  type=str)
 
         return parser
@@ -104,13 +104,13 @@ class UNet(object):
         model = unet.UNet(
                      num_input_channels  = args.num_input_channels,
                      num_output_channels = args.num_output_channels,
-                     feature_scale       = args.feature_scale, 
-                     more_layers         = args.more_layers, 
+                     feature_scale       = args.feature_scale,
+                     more_layers         = args.more_layers,
                      concat_x            = args.concat_x,
-                     upsample_mode       = args.upsample_mode, 
-                     pad                 = args.pad, 
-                     norm_layer          = args.norm_layer, 
-                     last_act            = args.last_act, 
+                     upsample_mode       = args.upsample_mode,
+                     pad                 = args.pad,
+                     norm_layer          = args.norm_layer,
+                     last_act            = args.last_act,
                      need_bias           = True
         )
 
@@ -120,7 +120,7 @@ class Johnson(object):
     def __init__(self, arg):
         super(UNet, self).__init__()
         self.arg = arg
-        
+
     @staticmethod
     def get_args(parser):
         parser.add('--num_input_channels',  type=int, default=3)
@@ -134,7 +134,7 @@ class Johnson(object):
         parser.add('--pad',           type=str, default="zero")
 
         parser.add('--norm_layer', type=str, default="in")
-        
+
         parser.add('--last_act', default='sigmoid',  type=str)
 
         return parser
@@ -145,13 +145,13 @@ class Johnson(object):
         model = johnson.TransformerNet(
                      num_input_channels  = args.num_input_channels,
                      num_output_channels = args.num_output_channels,
-                     feature_scale       = args.feature_scale, 
-                     # more_layers         = args.more_layers, 
+                     feature_scale       = args.feature_scale,
+                     # more_layers         = args.more_layers,
                      # concat_x            = args.concat_x,
-                     # upsample_mode       = args.upsample_mode, 
-                     # pad                 = args.pad, 
-                     norm_layer          = args.norm_layer, 
-                     # last_act            = args.last_act, 
+                     # upsample_mode       = args.upsample_mode,
+                     # pad                 = args.pad,
+                     norm_layer          = args.norm_layer,
+                     # last_act            = args.last_act,
                      # need_bias           = True
         )
 
@@ -163,15 +163,14 @@ class LinkNet(object):
     def __init__(self, arg):
         super().__init__()
         self.arg = arg
-        
+
     @staticmethod
-    def get_args(parser):
+    def get_args(parser, _=None):
         parser.add('--num_input_channels',  type=int, default=3)
         parser.add('--num_output_channels', type=int, default=3)
         parser.add('--resnet_depth', type=int, default=34)
 
         parser.add('--freeze_basenet',action='store_bool', default=False)
-
 
         # parser.add('--feature_scale', type=int, default=4)
         # parser.add('--more_layers',   type=int, default=0)
@@ -181,7 +180,7 @@ class LinkNet(object):
         # parser.add('--pad',           type=str, default="zero")
 
         # parser.add('--norm_layer', type=str, default="in")
-        
+
         # parser.add('--last_act', default='sigmoid',  type=str)
 
         return parser
@@ -193,9 +192,9 @@ class LinkNet(object):
         if load_pretrained:
             print(yellow(' - Loading a net, pretrained on ImageNet1k.'))
 
-        model = linknet.LinkNet(num_input_channels  = args.num_input_channels, 
+        model = linknet.LinkNet(num_input_channels  = args.num_input_channels,
                                 num_output_channels = args.num_output_channels,
-                                depth=args.resnet_depth, 
+                                depth=args.resnet_depth,
                                 pretrained=load_pretrained)
 
 
@@ -223,7 +222,7 @@ class InceptionV4(object):
     def __init__(self, arg):
         super().__init__()
         self.arg = arg
-        
+
     @staticmethod
     def get_args(parser):
         parser.add('--dropout_p',     type=float,  default=0.5)
@@ -247,7 +246,7 @@ class InceptionV4(object):
         predictor = MultiHead(in_features = 1536, num_classes=num_classes)
         predictor = nn.Sequential( nn.Dropout(args.dropout_p), predictor)
 
-        
+
         # Construct
         model = BaseModel(model.features, predictor, args.pooling)
 
@@ -265,7 +264,7 @@ class ResNet(object):
     def __init__(self, arg):
         super().__init__()
         self.arg = arg
-        
+
     @staticmethod
     def get_args(parser):
         parser.add('--dropout_p',     type=float,  default=0.5)
@@ -294,11 +293,11 @@ class ResNet(object):
 
             conv1_ = resnet.conv1
             resnet.conv1 = torch.nn.Conv2d(
-                args.num_input_channels, 
-                conv1_.out_channels, 
-                kernel_size=conv1_.kernel_size, 
-                stride=conv1_.stride, 
-                padding=conv1_.padding, 
+                args.num_input_channels,
+                conv1_.out_channels,
+                kernel_size=conv1_.kernel_size,
+                stride=conv1_.stride,
+                padding=conv1_.padding,
                 bias=False
             )
 
@@ -317,8 +316,8 @@ class ResNet(object):
                                     resnet.layer3,
                                     resnet.layer4)
 
-         
-        # Predictor 
+
+        # Predictor
         predictor = MultiHead(in_features = resnet.fc.in_features, num_classes=[int(x) for x in args.num_classes.split(',')])
         if args.dropout_p > 0:
             predictor = nn.Sequential( nn.Dropout(args.dropout_p), predictor)

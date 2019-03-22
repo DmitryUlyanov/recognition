@@ -5,7 +5,7 @@ from torchvision import models
 # from models.model import get_abstract_net, get_model_args
 # import torchvision.transforms as transforms
 from models.common import set_param_grad, ListModule
-from huepy import yellow 
+from huepy import yellow
 
 # @get_model_args
 # def get_args(parser):
@@ -17,7 +17,7 @@ from huepy import yellow
 
 # @get_abstract_net
 # def get_net(args):
-    
+
 #     # load_pretrained = args.net_init == 'pretrained' and args.checkpoint != ''
 #     # if load_pretrained:
 #     #     print(yellow('Loading a net, pretrained on ImageNet1k.'))
@@ -46,15 +46,15 @@ class ResNetEncoder(nn.Module):
 
          # If an image has different number of channelss
         if num_input_channels != 3:
-           
+
 
             conv1_ = backbone.conv1
             backbone.conv1 = torch.nn.Conv2d(
-                num_input_channels, 
-                conv1_.out_channels, 
-                kernel_size=conv1_.kernel_size, 
-                stride=conv1_.stride, 
-                padding=conv1_.padding, 
+                num_input_channels,
+                conv1_.out_channels,
+                kernel_size=conv1_.kernel_size,
+                stride=conv1_.stride,
+                padding=conv1_.padding,
                 bias = (conv1_.bias is not None)
             )
 
@@ -67,9 +67,9 @@ class ResNetEncoder(nn.Module):
                     backbone.conv1.weight.data[:, i * 3: (i + 1) * 3] = conv1_.weight.data * scaling_factor
 
                     if (conv1_.bias is not None) :
-                        backbone.conv1.bias.data[:, i * 3: (i + 1) * 3] = conv1_.bias.data * scaling_factor           
+                        backbone.conv1.bias.data[:, i * 3: (i + 1) * 3] = conv1_.bias.data * scaling_factor
 
-                
+
                 backbone.conv1.weight.data[:, num_input_channels - (num_input_channels % 3): num_input_channels] = conv1_.weight.data[:, :num_input_channels % 3] * scaling_factor
 
                 if  (conv1_.bias is not None) :
@@ -163,13 +163,14 @@ class FinalBlock(nn.Module):
         x = self.conv2(x)
         x = self.relu2(x)
         x = self.conv3(x)
+        x = torch.sigmoid(x)
         return x
 
 
 class LinkNet(nn.Module):
-    def __init__(self, num_input_channels, 
-                       num_output_channels, 
-                       depth=18, 
+    def __init__(self, num_input_channels,
+                       num_output_channels,
+                       depth=18,
                        pretrained=True):
         super().__init__()
 
@@ -177,8 +178,8 @@ class LinkNet(nn.Module):
             self.encoder = ResNetEncoder(models.resnet18, num_input_channels=num_input_channels, pretrained=pretrained)
         elif depth == 34:
             self.encoder = ResNetEncoder(models.resnet34, num_input_channels=num_input_channels, pretrained=pretrained)
-        # elif depth == 50:
-        #     self.encoder = ResNetEncoder(models.resnet50, num_input_channels=num_input_channels, pretrained=pretrained)
+        elif depth == 50:
+            self.encoder = ResNetEncoder(models.resnet50, num_input_channels=num_input_channels, pretrained=pretrained)
         else:
             raise ValueError(f'Unexcpected LinkNet depth: {depth}')
         filters = self.encoder.filters
@@ -214,6 +215,3 @@ class LinkNet(nn.Module):
     def unfreeze_basenet(self):
         for m in [self.encoder]:
             set_param_grad(m, True)
-
-
-
