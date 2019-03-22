@@ -125,7 +125,6 @@ class Model:
 
         if args.fp16:
             model = FP16Model(model)
-            # model = model.half()
 
 
         # Load checkpoint 
@@ -196,15 +195,15 @@ class Model:
 
 def save_model(model, epoch, args, optimizer=None, stage_num=0):
     
-    model_to_save = model
-    if isinstance(model, torch.nn.DataParallel):
-        model_to_save = model.module
+    model_to_save = unwrap_model(model)
+    # if isinstance(model, torch.nn.DataParallel):
+    #     model_to_save = model.module
     
-    if 'ModelAndLoss' in str(type(model_to_save)):
-        model_to_save = model_to_save.model
+    # if 'ModelAndLoss' in str(type(model_to_save)):
+    #     model_to_save = model_to_save.model
 
-    if 'FP16Model' in str(type(model_to_save)):
-        model_to_save = model_to_save.network
+    # if 'FP16Model' in str(type(model_to_save)):
+    #     model_to_save = model_to_save.network
 
     dict_to_save = { 
         'state_dict': model_to_save.state_dict(), 
@@ -321,6 +320,24 @@ def convert_network(network, dtype, convert_bn):
 
 
 
+
+
+def unwrap_model(model):
+
+
+    model_ = model
+    while True: 
+        if isinstance(model_, torch.nn.DataParallel):
+            model_ = model_.module
+
+        elif 'ModelAndLoss' in str(type(model_)):
+            model_ = model_.model
+
+        elif 'FP16Model' in str(type(model_)):
+            model_ = model_.network
+
+        else:
+            return model_
 
 
 
