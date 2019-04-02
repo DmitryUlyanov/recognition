@@ -108,21 +108,21 @@ class UNet(nn.Module):
 
 
 class unetConv2(nn.Module):
-    def __init__(self, in_size, out_size, norm_layer, need_bias, pad):
+    def __init__(self, in_size, out_size, norm_layer, need_bias, pad, kernel_size=3):
         super(unetConv2, self).__init__()
 
         # print(pad)
         if norm_layer is not None:
-            self.conv1= nn.Sequential(conv(in_size, out_size, 3, bias=need_bias, pad=pad),
+            self.conv1= nn.Sequential(conv(in_size, out_size, kernel_size, bias=need_bias, pad=pad),
                                        norm(out_size, norm_layer),
                                        nn.ReLU(),)
-            self.conv2= nn.Sequential(conv(out_size, out_size, 3, bias=need_bias, pad=pad),
+            self.conv2= nn.Sequential(conv(out_size, out_size, kernel_size, bias=need_bias, pad=pad),
                                        norm(out_size, norm_layer),
                                        nn.ReLU(),)
         else:
-            self.conv1= nn.Sequential(conv(in_size, out_size, 3, bias=need_bias, pad=pad),
+            self.conv1= nn.Sequential(conv(in_size, out_size, kernel_size, bias=need_bias, pad=pad),
                                        nn.ReLU(),)
-            self.conv2= nn.Sequential(conv(out_size, out_size, 3, bias=need_bias, pad=pad),
+            self.conv2= nn.Sequential(conv(out_size, out_size, kernel_size, bias=need_bias, pad=pad),
                                        nn.ReLU(),)
     def forward(self, inputs):
         outputs= self.conv1(inputs)
@@ -143,7 +143,7 @@ class unetDown(nn.Module):
 
 
 class unetUp(nn.Module):
-    def __init__(self, out_size, upsample_mode, need_bias, pad, same_num_filt=False):
+    def __init__(self, out_size, upsample_mode, need_bias, pad, same_num_filt=False, kernel_size=3):
         super(unetUp, self).__init__()
 
         num_filt = out_size if same_num_filt else out_size * 2
@@ -152,7 +152,7 @@ class unetUp(nn.Module):
             self.conv= unetConv2(out_size * 2, out_size, None, need_bias, pad)
         elif upsample_mode=='bilinear' or upsample_mode=='nearest':
             self.up = nn.Sequential(nn.Upsample(scale_factor=2, mode=upsample_mode),
-                                    conv(num_filt, out_size, 3, bias=need_bias, pad=pad))
+                                    conv(num_filt, out_size, kernel_size, bias=need_bias, pad=pad))
             self.conv= unetConv2(out_size * 2, out_size, None, need_bias, pad)
         else:
             assert False
