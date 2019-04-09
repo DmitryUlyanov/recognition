@@ -2,6 +2,7 @@ import math
 import torch
 from torch.optim.optimizer import Optimizer
 from utils.utils import parse_dict
+from models.model import get_wrapper
 
 from huepy import red
 import torch
@@ -20,11 +21,18 @@ def get_optimizer(args, model):
     
     # Parse parameters
     optimizer_args = parse_dict(args.optimizer_args)
-   
 
-    params_to_optimize = [p for p in model.parameters() if p.requires_grad]
+    if hasattr(model, 'name') and model.name == 'SpatialTransform':
+        print(' - SpatialTransform parameter groups')
+        params_to_optimize = [
+            {'params': model.model.parameters()},
+            {'params': model.theta, 'lr': optimizer_args['lr'] * 0.1}
+        ]
+        s = sum([np.prod(list(p.size())) for p in model.model.parameters()])
+    else:
+        params_to_optimize = [p for p in model.parameters() if p.requires_grad]
+        s = sum([np.prod(list(p.size())) for p in params_to_optimize])
     
-    s = sum([np.prod(list(p.size())) for p in params_to_optimize])
     print (f' - Number of params: {s}')
 
     optimizer = get_optimizer_class(args.optimizer)(params_to_optimize, **optimizer_args)

@@ -6,6 +6,9 @@ from collections import OrderedDict
 from os.path import expanduser
 import os
 
+from models.src.partialconv2d import PartialConv2d
+
+
 class View(nn.Module):
     def __init__(self):
         super(View, self).__init__()
@@ -13,14 +16,13 @@ class View(nn.Module):
     def forward(self, x):
         return x.view(-1) 
 
-
-
         
 class VGGLoss(nn.Module):
-    def __init__(self, net='caffe', normalize_grad=False):
+    def __init__(self, net='caffe', normalize_grad=False, partialconv=False):
         super().__init__()
 
         self.normalize_grad=normalize_grad
+        self.partialconv=partialconv
         
         if net == 'pytorch':
             vgg19 = torchvision.models.vgg19(pretrained=True).features
@@ -36,10 +38,8 @@ class VGGLoss(nn.Module):
                 vgg_weights = OrderedDict([(map[k] if k in map else k,v) for k,v in vgg_weights.items()])
 
                 
-
                 model = torchvision.models.vgg19()
                 model.classifier = nn.Sequential(View(), *model.classifier._modules.values())
-                
 
                 model.load_state_dict(vgg_weights)
                 
@@ -55,6 +55,12 @@ class VGGLoss(nn.Module):
                 vgg19 = torch.load(f'{expanduser("~")}/.torch/models/vgg_caffe_features.pth')
         else:
             assert False
+                                   
+        if self.partialconv:
+            part_conv = PartialConv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+            part_conv.weight = vgg19[0].weight
+            part_conv.bias = vgg19[0].bias
+            vgg19[0] = part_conv
 
         vgg19_avg_pooling = []
 
@@ -81,15 +87,19 @@ class VGGLoss(nn.Module):
         return (x - self.mean_) / self.std_
 
 
-    def forward(self, input, target):
+    def forward(self, input, target, mask=None):
         loss = 0
 
         features_input = self.normalize_inputs(input)
         features_target = self.normalize_inputs(target)
         for layer in self.vgg19:
 
-            features_input  = layer(features_input)
-            features_target = layer(features_target)
+            if isinstance(layer, PartialConv2d) and mask is not None:
+                features_input  = layer(features_input, mask)
+                features_target = layer(features_target, mask)
+            else:
+                features_input  = layer(features_input)
+                features_target = layer(features_target)
 
             if layer.__class__.__name__ == 'ReLU':
 
