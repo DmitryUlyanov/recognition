@@ -90,6 +90,9 @@ class VGGLoss(nn.Module):
     def forward(self, input, target, mask=None):
         loss = 0
 
+        if mask is not None:
+            input = input * mask
+
         features_input = self.normalize_inputs(input)
         features_target = self.normalize_inputs(target)
         for layer in self.vgg19:
