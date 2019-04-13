@@ -127,6 +127,7 @@ class LambdaKW(Augmenter):
 def get_crop_xy(img, crop_size, random_state):
     h, w = img.shape[0], img.shape[1]
         
+    # print(h - crop_size + 1)
     x = random_state.randint(0, w - crop_size + 1)
     y = random_state.randint(0, h - crop_size + 1)
     

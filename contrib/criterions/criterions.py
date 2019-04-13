@@ -424,6 +424,27 @@ def dice_loss(preds, trues, weight=None, is_average=False):
     return scores.mean()
         
 
+# class MaksedL1Loss(_Loss):                                                     
+#     """ Online hard example mining. 
+#     Needs input from nn.LogSotmax() """                                             
+                                                                                   
+#     def __init__(self):      
+#         super(NLL_OHEM, self).__init__(None, True)                                 
+#         self.loss = nn.L1Loss()
+        
+
+#     def forward(self, x, y):                                           
+#         # if ratio is not None:                                                      
+#         #     self.ratio = ratio  
+#         self.loss()
+
+#         losses = self.loss(x[0], y[0])
+
+#         mask = losses > self.threshold 
+
+#         # print(losses[mask].shape)
+#         return losses[mask].mean()
+
 
 import torch as th                                                                 
 
