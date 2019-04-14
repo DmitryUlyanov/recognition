@@ -1,0 +1,23 @@
+what: 1
+
+gpu1:
+  raw_data: /media/n01z3-dl1/sdf/kinect/raw_data
+  data:     /media/n01z3-dl1/sdf/kinect/data
+
+hachiko2:
+  raw_data: /raid/data/dulyanov/dulyanov/kinect/raw_data
+  data: /raid/data/dulyanov/dulyanov/kinect/data
+
+
+scenes:
+  scene0000_00: 
+    base: scannet/scans/scene0000_00
+  
+    splits: scene0000_00/splits
+
+    rendered:
+      color: extracted/color
+      depth: extracted/depth
+
+      normals: scene0000_00_vh_clean.ply_normalsmap.ply_rendered
+      world:   scene0000_00_vh_clean.ply_worldmap.ply_rendered
