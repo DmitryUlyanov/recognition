@@ -115,7 +115,9 @@ def tensor_to_np_recursive(data):
 
 from PIL import Image 
 
-def img_per_item(data, save_dir, iteration):
+
+
+def img_per_item(data, save_dir, iteration, dtype='uint8'):
     """
     Saves predictions to npz format, using one npy per sample,
     and sample names as keys
@@ -127,11 +129,24 @@ def img_per_item(data, save_dir, iteration):
     path = f'{save_dir}/{iteration}.npz'
 
     for pred, name in zip(data['output'], data['names']):
-        img_to_save = np.round(pred.transpose(1, 2, 0) * 255).astype(np.uint8)
+
+        if dtype=='uint8':
+            img_to_save = np.round(pred.transpose(1, 2, 0) * 255).astype(np.uint8)
+        elif dtype=='uint16':
+            img_to_save = np.round(pred.transpose(1, 2, 0) * 65536).astype(np.uint16)
+        elif dtype=='depth':
+            img_to_save = np.round(pred.transpose(1, 2, 0) * 1000).astype(np.uint16)
+        else:
+            assert False
 
         cv2.imwrite(f'{save_dir}/{os.path.basename(name).split(".")[0]:>04}.png', img_to_save[:, :, ::-1],  [cv2.IMWRITE_PNG_COMPRESSION, 9])
 
 
-    # np.savez_compressed(path, **data)
+def uint8_img_per_item(data, save_dir, iteration):
+    return img_per_item(data, save_dir, iteration, 'uint8')
 
-    # data=None
+def uint16_img_per_item(data, save_dir, iteration):
+    return img_per_item(data, save_dir, iteration, 'uint16')
+
+def depth_img_per_item(data, save_dir, iteration):
+    return img_per_item(data, save_dir, iteration, 'depth')

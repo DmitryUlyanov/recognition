@@ -52,13 +52,13 @@ parser.add('--saver_args',  type=str, default='')
 # Gather args across modules
 args, default_args, m = get_args_and_modules(parser, phase='test')
 
-
 # args.checkpoint_strict_load_state = True
 
 
 # Do not want to load it from args
 args.checkpoint_load_only_extractor = False
 args.checkpoint_strict_load_state = True
+
 
 # Setup everything else
 setup(args)
