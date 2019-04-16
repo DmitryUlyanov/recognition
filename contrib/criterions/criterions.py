@@ -12,7 +12,7 @@ from contrib.criterions.nn_loss import NNLoss
 
 
 import numpy as np
-import os 
+import os
 import sys
 import torch
 import torch.nn.functional as F
@@ -72,11 +72,11 @@ class LapL1Loss(_Loss):
         self.k_size = k_size
         self.sigma = sigma
         self._gauss_kernel = None
-        
+
     def forward(self, input, target):
         if self._gauss_kernel is None or self._gauss_kernel.shape[1] != input.shape[1]:
             self._gauss_kernel = build_gauss_kernel(
-                size=self.k_size, sigma=self.sigma, 
+                size=self.k_size, sigma=self.sigma,
                 n_channels=input.shape[1], cuda=input.is_cuda
             )
         pyr_input  = laplacian_pyramid( input, self._gauss_kernel, self.max_levels)
@@ -92,7 +92,7 @@ def build_gauss_kernel(size=5, sigma=1.0, n_channels=1, cuda=False):
     kernel /= np.sum(kernel)
     # repeat same kernel across depth dimension
     kernel = np.tile(kernel, (n_channels, 1, 1))
-    # conv weight should be (out_channels, groups/in_channels, h, w), 
+    # conv weight should be (out_channels, groups/in_channels, h, w),
     # and since we have depth-separable convolution we want the groups dimension to be 1
     kernel = torch.FloatTensor(kernel[:, None, :, :], requires_grad=False)
     if cuda:
@@ -148,23 +148,23 @@ class L1CosineLoss(_Loss):
 
 class MultiHeadCriterion(_Loss):
     '''
-        For a number of "1-of-K" tasks. 
+        For a number of "1-of-K" tasks.
 
     '''
     def __init__(self, weight=None, losses='auto', size_average=None, reduce=None, reduction='elementwise_mean'):
         super(MultiHeadCriterion, self).__init__(size_average, reduce, reduction)
-        
+
         self.weight = weight
         if weight is not None:
             self.weight = weight.cuda()
 
         self.losses = losses
-        # if losses != 'auto': 
+        # if losses != 'auto':
 
 
     def forward(self, inputs, targets):
         '''
-            let N be a number of different tasks 
+            let N be a number of different tasks
 
             `target` is a list of size N, where each element is either a vector of size `B` (then is is multi-class task)
                 or of size `B` x P_i, where P_i is the number of labels (in multi-label task e.g. tagging)
@@ -182,7 +182,7 @@ class MultiHeadCriterion(_Loss):
             if (len(target.shape) == 1 or target.shape[1] == 1) and input.shape[1] > 1:
                 loss = nn.CrossEntropyLoss(weight=self.weight)
                 losses[i] = loss(input, target)
-            else: 
+            else:
                 print(' !!!!! ' )
                 # loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor(0.00636))
                 # loss = nn.BCEWithLogitsLoss()
@@ -202,10 +202,10 @@ class MultiHeadCriterion(_Loss):
 class CriterionList(_Loss):
     def __init__(self, criterions=None, weights=None):
         super(CriterionList, self).__init__()
-        
+
         self.criterions = [
             # LovaszSoftmaxFlat(),
-            # nn.CrossEntropyLoss(), 
+            # nn.CrossEntropyLoss(),
             # nn.L1Loss(),
         ]
 
@@ -219,16 +219,16 @@ class CriterionList(_Loss):
         lens = [len(x) for x in [inputs, targets, self.weights, self.criterions]]
 
         assert all([x == lens[0] for x in lens]), print(lens)
-        
+
 
         losses = {}
         for i, (input, target, weight, criterion) in enumerate(zip(inputs, targets, self.weights, self.criterions)):
-            
+
             if target is None or weight == 0:
                 continue
 
             losses[i] = criterion(input, target) * weight
-           
+
         return losses
 
 
@@ -237,7 +237,7 @@ class CriterionList(_Loss):
 class ColorRecognitionLoss(_Loss):
     def __init__(self, num_colors_weight=0.2, need_sigmoid=True):
         super().__init__()
-        
+
         self.ce =  nn.CrossEntropyLoss()
         self.color_loss = HungarianLoss()
 
@@ -249,9 +249,9 @@ class ColorRecognitionLoss(_Loss):
 
         losses = {}
 
-        losses['color'] = self.color_loss([torch.sigmoid(x) if self.need_sigmoid else x for x in inputs[:-1]], targets)['all'] 
+        losses['color'] = self.color_loss([torch.sigmoid(x) if self.need_sigmoid else x for x in inputs[:-1]], targets)['all']
         losses['num_colors'] = self.ce(inputs[-1], targets[1] - 1) * self.num_colors_weight
-        
+
         return losses
 
 
@@ -275,11 +275,11 @@ class DeepSupervisedCriterion(_Loss):
     def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
         super(DeepSupervisedCriterion, self).__init__(size_average, reduce, reduction)
 
-        self.is_average = True 
+        self.is_average = True
 
     def forward(self, input, targets):
 
-        pred_pixel_lvl, preds_middle, pred_image_lvl = input 
+        pred_pixel_lvl, preds_middle, pred_image_lvl = input
 
         total_loss = 0
         for ti in range(targets.shape[1]):
@@ -292,7 +292,7 @@ class DeepSupervisedCriterion(_Loss):
                 loss_pixel += symmetric_lovasz_ignore_empty(pred_m.squeeze(1), target, target_image_lvl)
                 # loss_pixel += fnn.binary_cross_entropy_with_logits(pred_m.squeeze(1), target)
 
-            # loss = fnn.binary_cross_entropy_with_logits(pred_pixel_lvl.squeeze(1), target)    
+            # loss = fnn.binary_cross_entropy_with_logits(pred_pixel_lvl.squeeze(1), target)
             loss = symmetric_lovasz(pred_pixel_lvl.squeeze(1), target)
 
             total_loss += 0.05 * loss_image + 0.1 * loss_pixel + 1 * loss
@@ -323,17 +323,17 @@ class LossBinaryDice(nn.Module):
 
 class DeepSupervisedBCECriterion(_Loss):
     '''
-        image level loss + pixel level loss + additional supervision 
+        image level loss + pixel level loss + additional supervision
     '''
     def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
         super(DeepSupervisedBCECriterion, self).__init__(size_average, reduce, reduction)
 
-        self.is_average = True 
+        self.is_average = True
 
     def forward(self, input, targets):
 
-        pred_pixel_lvl, preds_middle, pred_image_lvl = input 
-        target_pixel_lvl, target_image_lvl = targets 
+        pred_pixel_lvl, preds_middle, pred_image_lvl = input
+        target_pixel_lvl, target_image_lvl = targets
 
         # print(pred_image_lvl, target_image_lvl)
         # print(target_image_lvl, target_pixel_lvl.max(), target_pixel_lvl.mean())
@@ -341,19 +341,19 @@ class DeepSupervisedBCECriterion(_Loss):
         loss_image_lvl = fnn.binary_cross_entropy_with_logits(pred_image_lvl, target_image_lvl)
 
 
-        loss_middle = torch.tensor(0, dtype=torch.float32, device=pred_pixel_lvl.device) 
-        
+        loss_middle = torch.tensor(0, dtype=torch.float32, device=pred_pixel_lvl.device)
+
         # m = target_image_lvl > 0
 
         # if m.sum().item() > 0:
         #     for pred_m in preds_middle:
         #         loss_middle += 0.4 * fnn.binary_cross_entropy_with_logits(pred_m[m], target_pixel_lvl[m]) + dice_loss(torch.sigmoid(pred_m[m]), target_pixel_lvl[m])
-            
-        pixel_lvl_loss = 0.4 * fnn.binary_cross_entropy_with_logits(pred_pixel_lvl, target_pixel_lvl) 
+
+        pixel_lvl_loss = 0.4 * fnn.binary_cross_entropy_with_logits(pred_pixel_lvl, target_pixel_lvl)
 
         # if m.sum().item() > 0:
         #     pixel_lvl_loss += dice_loss(torch.sigmoid(pred_pixel_lvl[m]), target_pixel_lvl[m])
-            
+
         total_loss = 1. * loss_image_lvl + 1 * pixel_lvl_loss + 0.1 * loss_middle
 
         sep_losses = {
@@ -361,23 +361,23 @@ class DeepSupervisedBCECriterion(_Loss):
             'pixel_lvl_loss': pixel_lvl_loss,
             'loss_middle': loss_middle
         }
-        
+
         return total_loss, sep_losses
 
 
 class DeepSupervisedBCEPretrainCriterion(_Loss):
     '''
-        image level loss + pixel level loss + additional supervision 
+        image level loss + pixel level loss + additional supervision
     '''
     def __init__(self, size_average=None, reduce=None, reduction='elementwise_mean'):
         super(DeepSupervisedBCEPretrainCriterion, self).__init__(size_average, reduce, reduction)
 
-        self.is_average = True 
+        self.is_average = True
 
     def forward(self, input, targets):
 
-        pred_pixel_lvl, preds_middle, pred_image_lvl = input 
-        target_pixel_lvl, target_image_lvl = targets 
+        pred_pixel_lvl, preds_middle, pred_image_lvl = input
+        target_pixel_lvl, target_image_lvl = targets
 
         # print(pred_image_lvl, target_image_lvl)
         # print(target_image_lvl, target_pixel_lvl.max(), target_pixel_lvl.mean())
@@ -385,19 +385,19 @@ class DeepSupervisedBCEPretrainCriterion(_Loss):
         loss_image_lvl = fnn.binary_cross_entropy_with_logits(pred_image_lvl, target_image_lvl)
 
 
-        # loss_middle = torch.tensor(0, dtype=torch.float32, device=pred_pixel_lvl.device) 
-        
+        # loss_middle = torch.tensor(0, dtype=torch.float32, device=pred_pixel_lvl.device)
+
         # m = target_image_lvl > 0
 
         # if m.sum().item() > 0:
         #     for pred_m in preds_middle:
         #         loss_middle += 0.4 * fnn.binary_cross_entropy_with_logits(pred_m[m], target_pixel_lvl[m]) + dice_loss(torch.sigmoid(pred_m[m]), target_pixel_lvl[m])
-            
-        # pixel_lvl_loss = 0.4 * fnn.binary_cross_entropy_with_logits(pred_pixel_lvl, target_pixel_lvl) 
+
+        # pixel_lvl_loss = 0.4 * fnn.binary_cross_entropy_with_logits(pred_pixel_lvl, target_pixel_lvl)
 
         # if m.sum().item() > 0:
         #     pixel_lvl_loss += dice_loss(torch.sigmoid(pred_pixel_lvl[m]), target_pixel_lvl[m])
-            
+
         total_loss = 1. * loss_image_lvl # + 1 * pixel_lvl_loss + 0.1 * loss_middle
 
         sep_losses = {
@@ -405,7 +405,7 @@ class DeepSupervisedBCEPretrainCriterion(_Loss):
             # 'pixel_lvl_loss': pixel_lvl_loss,
             # 'loss_middle': loss_middle
         }
-        
+
         return total_loss, sep_losses
 
 
@@ -414,7 +414,7 @@ class DeepSupervisedBCEPretrainCriterion(_Loss):
 eps = 1e-3
 def dice_loss(preds, trues, weight=None, is_average=False):
     b, c = preds.shape[0], preds.shape[1]
-    
+
     preds = preds.view(b, c, -1)
     trues = trues.view(b, c, -1)
 
@@ -422,28 +422,49 @@ def dice_loss(preds, trues, weight=None, is_average=False):
     scores = 1 - (2. * intersection + eps) / (preds.sum(2) + trues.sum(2) + eps)
 
     return scores.mean()
-        
 
 
-import torch as th                                                                 
+# class MaksedL1Loss(_Loss):
+#     """ Online hard example mining.
+#     Needs input from nn.LogSotmax() """
 
-class NLL_OHEM(_Loss):                                                     
-    """ Online hard example mining. 
-    Needs input from nn.LogSotmax() """                                             
-                                                                                   
-    def __init__(self, threshold=0.22):      
-        super(NLL_OHEM, self).__init__(None, True)                                 
-        self.threshold = threshold                                                         
-        self.loss = nn.CrossEntropyLoss(reduction='none')   
+#     def __init__(self):
+#         super(NLL_OHEM, self).__init__(None, True)
+#         self.loss = nn.L1Loss()
 
-    def forward(self, x, y):                                           
-        # if ratio is not None:                                                      
-        #     self.ratio = ratio  
+
+#     def forward(self, x, y):
+#         # if ratio is not None:
+#         #     self.ratio = ratio
+#         self.loss()
+
+#         losses = self.loss(x[0], y[0])
+
+#         mask = losses > self.threshold
+
+#         # print(losses[mask].shape)
+#         return losses[mask].mean()
+
+
+import torch as th
+
+class NLL_OHEM(_Loss):
+    """ Online hard example mining.
+    Needs input from nn.LogSotmax() """
+
+    def __init__(self, threshold=0.22):
+        super(NLL_OHEM, self).__init__(None, True)
+        self.threshold = threshold
+        self.loss = nn.CrossEntropyLoss(reduction='none')
+
+    def forward(self, x, y):
+        # if ratio is not None:
+        #     self.ratio = ratio
 
 
         losses = self.loss(x[0], y[0])
 
-        mask = losses > self.threshold 
+        mask = losses > self.threshold
 
         # print(losses[mask].shape)
         return losses[mask].mean()
@@ -467,17 +488,17 @@ def lovasz_grad(gt_sorted):
     return jaccard
 
 
-class LovaszSoftmaxFlat(_Loss):                                                     
-    """ Online hard example mining. 
-    Needs input from nn.LogSotmax() """                                             
-                                                                                   
-    def __init__(self, threshold=0.22):      
-        super(LovaszSoftmaxFlat, self).__init__(None, True)                                 
-        self.threshold = threshold                                                         
-        # self.loss = nn.CrossEntropyLoss(reduction='none')   
+class LovaszSoftmaxFlat(_Loss):
+    """ Online hard example mining.
+    Needs input from nn.LogSotmax() """
 
-    def forward(self, x, y):   
-        return lovasz_softmax_flat(torch.softmax(x, 1), y)                                        
+    def __init__(self, threshold=0.22):
+        super(LovaszSoftmaxFlat, self).__init__(None, True)
+        self.threshold = threshold
+        # self.loss = nn.CrossEntropyLoss(reduction='none')
+
+    def forward(self, x, y):
+        return lovasz_softmax_flat(torch.softmax(x, 1), y)
 
 
 def lovasz_softmax_flat(probas, labels, only_present=False):
@@ -487,7 +508,7 @@ def lovasz_softmax_flat(probas, labels, only_present=False):
     labels: [P] Tensor, ground truth labels (between 0 and C - 1)
     only_present: average only on classes present in ground truth
     """
-    
+
     C = probas.size(1)
     losses = []
     for c in range(C):
@@ -503,10 +524,95 @@ def lovasz_softmax_flat(probas, labels, only_present=False):
     return sum(losses)/len(losses)
 
 
+def compute_normals(depth, valid_normals_mask, intrinsics):
+    """
+    Args:
+        depth - [N,1,H,W] - Z-coordinate for every pixel
+        valid_normals_mask - [N, 1, H, W], float
+        intrinsics - list of size 4: [fx, fy, cx, cy]
+    Returns:
+        normals - [N, 3, H-2, W-2], float
+    """
+    f_x, f_y, c_x, c_y = intrinsics
+
+    n, c, h, w = depth.size()
+    x, y = torch.meshgrid(torch.arange(w), torch.arange(h))
+    x = x.to(torch.float32).to('cuda', non_blocking=True)
+    y = y.to(torch.float32).to('cuda', non_blocking=True)
+    Z = depth
+    X = Z * (x - c_x) / f_x
+    Y = Z * (y - c_y) / f_y
+
+    points = torch.cat([X, Y, Z], dim=1)
+
+    central_points = points[:, :, 1:-1, 1:-1]
+    upper_points = points[:, :, 0:-2, 1:-1]
+    lower_points = points[:, :, 2:, 1:-1]
+    left_points = points[:, :, 1:-1, 0:-2]
+    right_points = points[:, :, 1:-1, 2:]
+
+    normal1 = torch.cross(lower_points - central_points, central_points - right_points, dim=1)
+    normal2 = torch.cross(upper_points - central_points, central_points - left_points, dim=1)
+
+    EPS = 1e-5
+    normal1 = torch.nn.functional.normalize(normal1, dim=1, eps=EPS)
+    normal2 = torch.nn.functional.normalize(normal2, dim=1, eps=EPS)
+
+    normal = normal1 + normal2
+    normal = torch.nn.functional.normalize(normal, dim=1, eps=EPS)
+    normal = normal * valid_normals_mask[:,:,1:-1, 1:-1]
+    #normal = torch.nn.functional.pad(normal, [1,1,1,1])
+
+    return normal
 
 
+def compute_normals_gradient(normals, valid_normals_gradient_mask):
+    grads1 = normals[:,:,2:,1:-1] - normals[:,:,:-2,1:-1]
+    grads2 = normals[:,:,1:-1,2:] - normals[:,:,1:-1,:-2]
+    grads1 = torch.nn.functional.normalize(grads1, dim=1, eps=1e-5)
+    grads2 = torch.nn.functional.normalize(grads2, dim=1, eps=1e-5)
+    grads = torch.nn.functional.normalize(grads1+grads2, dim=1, eps=1e-5)
+    grads = grads * valid_normals_gradient_mask[:,:,2:-2, 2:-2]
+    return grads
 
 
+class SurfaceNormalLoss(nn.Module):
+    def __init__(self, input_intrinsics, target_intrinsics):
+        super(SurfaceNormalLoss, self).__init__()
+        self.input_intrinsics = input_intrinsics
+        self.target_intrinsics = target_intrinsics
+
+    def forward(self, input, target, valid_normals_mask, valid_normals_gradient_mask):
+        """
+        input - [N, 1, H, W] - tensor with predicted depth (z-coord)
+        target - [N, 1, H, W] - ground truth depth (z-coord)
+        estimates normals and computes 1/N * \sum_i (1-cos_distance(Norm_i, Norm_i^{gt}))
+        """
+        predicted_normals = compute_normals(input, valid_normals_mask, self.input_intrinsics)
+        target_normals = compute_normals(target, valid_normals_mask, self.target_intrinsics)
+
+        predicted_normals_grads = compute_normals_gradient(predicted_normals, valid_normals_gradient_mask)
+        target_normals_grads = compute_normals_gradient(target_normals, valid_normals_gradient_mask)
+
+        surf_loss = 1.0 - torch.mean(torch.nn.functional.cosine_similarity(
+            predicted_normals, target_normals, dim=1, eps=1e-5) * valid_normals_mask[:, :, 1:-1, 1:-1])
+        normals_grad_loss = 1.0 - torch.mean(torch.nn.functional.cosine_similarity(
+            predicted_normals_grads, target_normals_grads, dim=1, eps=1e-5) *
+                    valid_normals_gradient_mask[:,:,2:-2,2:-2])
+        return surf_loss, normals_grad_loss
+
+
+class L1AndSurfaceNormalLoss(nn.Module):
+    def __init__(self, l1_weight=0.5, surf_loss_weight=1.0, *args, **kwargs):
+        super(L1AndSurfaceNormalLoss, self).__init__()
+        self.surface_normal_loss = SurfaceNormalLoss(*args, **kwargs)
+        self.l1_weight = l1_weight
+        self.surf_loss_weight = surf_loss_weight
+
+    def forward(self, input, target, valid_normals_mask):
+        return self.l1_weight * torch.nn.functional.l1_loss(input, target) + \
+                self.surf_loss_weight * self.surface_normal_loss.forward(
+                        input, target, valid_normals_mask)
 
 
 class EntropyLoss(nn.Module):
@@ -540,7 +646,7 @@ class TVLoss(nn.Module):
 class RGBandXYZ(nn.Module):
     def __init__(self, w_xyz=1, w_rgb=1):
         super().__init__()
-        
+
         self.criterion_rgb = VGGLoss('caffe')
         self.criterion_xyz = nn.L1Loss()
 
@@ -559,7 +665,7 @@ class RGBandXYZ(nn.Module):
     def forward(self, inputs, targets):
 
         xyz_mask = 1 - targets[:, -1:]
-        
+
         # print(xyz_mask.max(), xyz_mask.min())
         rgb_input,  xyz_input  = [inputs[:, :3],  inputs[:, 3:]]
         rgb_target, xyz_target = [targets[:, :3], targets[:, 3:6]]
@@ -569,35 +675,34 @@ class RGBandXYZ(nn.Module):
 
         if self.w_xyz > 0:
             losses['xyz'] = self.criterion_xyz(xyz_input * xyz_mask, xyz_target * xyz_mask) * self.w_xyz
-        
+
         if self.w_rgb > 0:
             losses['rgb'] = self.criterion_rgb(rgb_input, rgb_target) * self.w_rgb
-        
+
 
 
 
         # lens = [len(x) for x in [inputs, targets, self.weights, self.criterions]]
 
         # assert all([x == lens[0] for x in lens]), print(lens)
-        
+
 
         # losses = {}
         # for i, (input, target, weight, criterion) in enumerate(zip(inputs, targets, self.weights, self.criterions)):
-            
+
         #     if target is None or weight == 0:
         #         continue
 
         #     losses[i] = criterion(input, target) #* weight
-           
-        return sum(losses.values())
 
+        return sum(losses.values())
 
 
 
 class RGBandUV(nn.Module):
     def __init__(self, w_rgb=1, w_uv=1):
         super().__init__()
-        
+
         self.criterion_rgb = VGGLoss('caffe')
         # self.criterion_rgb = nn.L1Loss()
 
@@ -619,7 +724,7 @@ class RGBandUV(nn.Module):
     def forward(self, inputs, targets):
 
         # xyz_mask = 1 - targets[:, -1:]
-        
+
         # print(xyz_mask.max(), xyz_mask.min())
         rgb_input,  uv_input  = [inputs[:, :3],  inputs[:, 3:]]
         rgb_target, uv_target = [targets[:, :3], inputs[:, 3:] * 0]
@@ -629,25 +734,27 @@ class RGBandUV(nn.Module):
 
         # if self.w_uv > 0:
         #     losses['uv'] = self.criterion_uv(uv_input, uv_target) * self.w_uv
-        
+
         if self.w_rgb > 0:
             losses['rgb'] = self.criterion_rgb(rgb_input, rgb_target) * self.w_rgb
-        
+
 
 
 
         # lens = [len(x) for x in [inputs, targets, self.weights, self.criterions]]
 
         # assert all([x == lens[0] for x in lens]), print(lens)
-        
+
 
         # losses = {}
         # for i, (input, target, weight, criterion) in enumerate(zip(inputs, targets, self.weights, self.criterions)):
-            
+
         #     if target is None or weight == 0:
         #         continue
 
         #     losses[i] = criterion(input, target) #* weight
-           
+
         return sum(losses.values())
+
+
 

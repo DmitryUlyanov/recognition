@@ -101,7 +101,6 @@ def any2float(img, dtype_float=np.float32):
 
 class ToTensor(object):
     def __call__(self, pic):
-
         return torch.from_numpy(any2float(pic.transpose(2, 0, 1)))
 
     def __repr__(self):

@@ -22,7 +22,7 @@ python scripts/attributes_classifier/train_test_split.py \
 parser = argparse.ArgumentParser(conflict_handler='resolve')
 parser.add = parser.add_argument
 
-parser.add('--img_dir', type=str, action='append', dest='classes', default=[], help='')
+parser.add('--img_dir', type=str, action='append', dest='img_dirs', default=[], help='')
 # OR
 parser.add('--imgs_dir',  type=str,  default="",  help='')
 parser.add('--suffix',    type=str,  default="", )
@@ -43,19 +43,21 @@ def fname(x):
     return '.'.join(os.path.basename(x).split('.')[:-1])
 
 if args.imgs_dir != "":
-    assert len(args.img_dir) == 0, 'Please pass either --img_dir <> either --imgs_dir <>'
+    assert len(args.img_dirs) == 0, 'Please pass either --img_dir <> either --imgs_dir <>'
     # classes = sorted(glob(f"{args.imgs_dir}/*"))
 
 else: 
-    assert len(args.img_dir) > 0, 'Please pass either --img_dir <> either --imgs_dir <>'
+    assert len(args.img_dirs) > 0, 'Please pass either --img_dir <> either --imgs_dir <>'
 
     dfs = []
     names = None
-    for i, img_dir in enumerate(img_dirs):
-        img_paths = glob.glob(f'{img_dir}/f*')
+    for i, img_dir in enumerate(args.img_dirs):
+        img_paths = glob(f'{img_dir}/*')
 
-        df = pd.DataFrame(img_paths, columns=[f'img{i}_path'])
-        df['name'] = df[f'img{i}_path'].apply(fname)
+        colname = os.path.basename(os.path.realpath(img_dir))
+        print(colname)
+        df = pd.DataFrame(img_paths, columns=[colname])
+        df['name'] = df[colname].apply(fname)
 
         dfs.append(df)        
 
