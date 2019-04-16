@@ -18,11 +18,12 @@ class View(nn.Module):
 
         
 class VGGLoss(nn.Module):
-    def __init__(self, net='caffe', normalize_grad=False, partialconv=False):
+    def __init__(self, net='caffe', normalize_grad=False, partialconv=False, take_each_layer=1):
         super().__init__()
 
         self.normalize_grad=normalize_grad
         self.partialconv=partialconv
+        self.take_each_layer=take_each_layer
         
         if net == 'pytorch':
             vgg19 = torchvision.models.vgg19(pretrained=True).features
@@ -76,11 +77,10 @@ class VGGLoss(nn.Module):
             else:
                 vgg19_avg_pooling.append(module)
         
-        vgg19_avg_pooling = nn.Sequential(*vgg19_avg_pooling)
+        vgg19_avg_pooling = vgg19_avg_pooling[:30] 
+        self.vgg19 = nn.Sequential(*vgg19_avg_pooling)
 
-        
-        self.vgg19 = vgg19_avg_pooling[:30]
-        # print(vgg19)
+        # print(self.vgg19)
         
 
     def normalize_inputs(self, x):
@@ -95,7 +95,7 @@ class VGGLoss(nn.Module):
 
         features_input = self.normalize_inputs(input)
         features_target = self.normalize_inputs(target)
-        for layer in self.vgg19:
+        for i, layer in enumerate(self.vgg19):
 
             if isinstance(layer, PartialConv2d) and mask is not None:
                 features_input  = layer(features_input, mask)
@@ -104,7 +104,7 @@ class VGGLoss(nn.Module):
                 features_input  = layer(features_input)
                 features_target = layer(features_target)
 
-            if layer.__class__.__name__ == 'ReLU':
+            if layer.__class__.__name__ == 'ReLU' and i % self.take_each_layer == 0:
 
                 if self.normalize_grad:
                     pass
