@@ -127,7 +127,7 @@ setup(args)
 # Load dataloaders
 model_native_transform = m['model'].get_native_transform()
 dataloader_train       = m['dataloader'].get_dataloader(args, model_native_transform, part='train', phase='train')
-dataloader_val         = m['dataloader'].get_dataloader(args, model_native_transform, part='val',   phase='val')
+dataloader_val         = m['dataloader'].get_dataloader(args, model_native_transform, part='val',   phase='train')
 
 
 # Load criterion
