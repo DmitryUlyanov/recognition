@@ -200,8 +200,8 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
         # ===================
         #       Train
         # ===================
-        torch.set_grad_enabled(True)
-        m['runner'].run_epoch(dataloader_train, model, criterion, optimizer, epoch, stage_args, phase='train', writer=writer, saver=saver)
+        with torch.set_grad_enabled(True):
+            m['runner'].run_epoch(dataloader_train, model, criterion, optimizer, epoch, stage_args, phase='train', writer=writer, saver=saver)
         
 
 
@@ -213,8 +213,8 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
         else:
             model.train()
 
-        torch.set_grad_enabled(False)
-        val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, stage_args, phase='val', writer=writer, saver=saver)
+        with torch.set_grad_enabled(False):
+            val_loss = m['runner'].run_epoch(dataloader_val, model, criterion, None, epoch, stage_args, phase='val', writer=writer, saver=saver)
         
         scheduler.step(val_loss)
 

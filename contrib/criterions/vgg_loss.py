@@ -90,6 +90,11 @@ class VGGLoss(nn.Module):
     def forward(self, input, target, mask=None):
         loss = 0
 
+        if mask is None and self.partialconv:
+            eps = 1e-12
+            mask = target.sum(1, True) > eps
+            mask = mask.float()
+
         if mask is not None:
             input = input * mask
 
