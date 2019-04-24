@@ -537,7 +537,7 @@ def compute_normals(depth, valid_normals_mask, intrinsics):
     f_x, f_y, c_x, c_y = intrinsics
 
     n, c, h, w = depth.size()
-    x, y = torch.meshgrid(torch.arange(w), torch.arange(h))
+    y, x = torch.meshgrid(torch.arange(h), torch.arange(w))
     x = x.to(torch.float32).to('cuda', non_blocking=True)
     y = y.to(torch.float32).to('cuda', non_blocking=True)
     Z = depth
@@ -583,7 +583,7 @@ class SurfaceNormalLoss(nn.Module):
         self.input_intrinsics = input_intrinsics
         self.target_intrinsics = target_intrinsics
 
-    def forward(self, input, target, valid_normals_mask, valid_normals_gradient_mask):
+    def forward(self, input, target, valid_normals_mask, *args, **kwargs):
         """
         input - [N, 1, H, W] - tensor with predicted depth (z-coord)
         target - [N, 1, H, W] - ground truth depth (z-coord)
@@ -592,15 +592,16 @@ class SurfaceNormalLoss(nn.Module):
         predicted_normals = compute_normals(input, valid_normals_mask, self.input_intrinsics)
         target_normals = compute_normals(target, valid_normals_mask, self.target_intrinsics)
 
-        predicted_normals_grads = compute_normals_gradient(predicted_normals, valid_normals_gradient_mask)
-        target_normals_grads = compute_normals_gradient(target_normals, valid_normals_gradient_mask)
+        #predicted_normals_grads = compute_normals_gradient(predicted_normals, kwargs['valid_normals_gradient_mask'])
+        #target_normals_grads = compute_normals_gradient(target_normals, kwargs['valid_normals_gradient_mask'])
 
         surf_loss = 1.0 - torch.mean(torch.nn.functional.cosine_similarity(
             predicted_normals, target_normals, dim=1, eps=1e-5) * valid_normals_mask[:, :, 1:-1, 1:-1])
-        normals_grad_loss = 1.0 - torch.mean(torch.nn.functional.cosine_similarity(
-            predicted_normals_grads, target_normals_grads, dim=1, eps=1e-5) *
-                    valid_normals_gradient_mask[:,:,2:-2,2:-2])
-        return surf_loss, normals_grad_loss
+        #normals_grad_loss = 1.0 - torch.mean(torch.nn.functional.cosine_similarity(
+        #    predicted_normals_grads, target_normals_grads, dim=1, eps=1e-5) *
+        #            kwargs['valid_normals_gradient_mask'][:,:,2:-2,2:-2])
+        #return surf_loss, normals_grad_loss
+        return surf_loss
 
 
 class L1AndSurfaceNormalLoss(nn.Module):
@@ -610,10 +611,10 @@ class L1AndSurfaceNormalLoss(nn.Module):
         self.l1_weight = l1_weight
         self.surf_loss_weight = surf_loss_weight
 
-    def forward(self, input, target, valid_normals_mask):
+    def forward(self, input, target, **kwargs):
         return self.l1_weight * torch.nn.functional.l1_loss(input, target) + \
                 self.surf_loss_weight * self.surface_normal_loss.forward(
-                        input, target, valid_normals_mask)
+                        input, target, kwargs['valid_normals_mask'])
 
 
 class EntropyLoss(nn.Module):

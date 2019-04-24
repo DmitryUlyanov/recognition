@@ -44,31 +44,32 @@ def fname(x):
 
 if args.imgs_dir != "":
     assert len(args.img_dirs) == 0, 'Please pass either --img_dir <> either --imgs_dir <>'
-    # classes = sorted(glob(f"{args.imgs_dir}/*"))
+    # classes =
 
+    args.img_dirs = sorted(glob(f"{args.imgs_dir}/*"))
 else: 
     assert len(args.img_dirs) > 0, 'Please pass either --img_dir <> either --imgs_dir <>'
 
-    dfs = []
-    names = None
-    for i, img_dir in enumerate(args.img_dirs):
-        img_paths = glob(f'{img_dir}/*')
+dfs = []
+names = None
+for i, img_dir in enumerate(args.img_dirs):
+    img_paths = glob(f'{img_dir}/*')
 
-        colname = os.path.basename(os.path.realpath(img_dir))
-        print(colname)
-        df = pd.DataFrame(img_paths, columns=[colname])
-        df['name'] = df[colname].apply(fname)
+    colname = os.path.basename(os.path.realpath(img_dir))
+    print(colname)
+    df = pd.DataFrame(img_paths, columns=[colname])
+    df['name'] = df[colname].apply(fname)
 
-        dfs.append(df)        
+    dfs.append(df)        
 
-        
-    df = dfs[0]
-    for d in dfs[1:]:
-        df = df.join(d.set_index('name'), how='inner', on='name')
+    
+df = dfs[0]
+for d in dfs[1:]:
+    df = df.join(d.set_index('name'), how='inner', on='name')
 
-    df = df.drop('name', axis=1)
+df = df.drop('name', axis=1)
 
-    print(f"Found {len(df)} pairs.")
+print(f"Found {len(df)} pairs.")
 
 
 df = shuffle(df).reset_index(drop=True)
@@ -87,6 +88,7 @@ df_train, df_val, df_test = np.split(df, [int(train_size*len(df)), int((1 - args
 #     df_test = pd.DataFrame(np.vstack([imgs, labels]).T, columns=['img_path', 'label'])
 #     df_test['basename'] = df_test.img_path.apply(os.path.basename)
 
+os.makedirs(args.save_dir, exist_ok=True)
 
 # Save to disk
 

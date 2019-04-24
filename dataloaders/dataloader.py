@@ -41,11 +41,12 @@ class Dataloader:
             
             dataset = self.dataset.get_dataset(args, model_native_transform, part, phase)
 
-            if sampler is None: 
-                sampler = torch.utils.data.RandomSampler(range(len(dataset)), replacement=False)
 
             if args.num_samples_train != -1 and phase =='train': 
                 sampler = torch.utils.data.RandomSampler(range(len(dataset)), replacement=True, num_samples=args.num_samples_train)
+
+            if sampler is None: 
+                sampler = torch.utils.data.RandomSampler(range(len(dataset)), replacement=False)
 
             return DataLoader(
                             dataset,
@@ -54,7 +55,7 @@ class Dataloader:
                             sampler=sampler if phase == 'train' else None,
                             pin_memory=True,
                             drop_last=True if phase == 'train' else False,
-                            shuffle=None if part == 'train' else True,
+                            shuffle=None if phase == 'train' else True,
                             worker_init_fn=inin_w)
 
 
