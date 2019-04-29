@@ -140,6 +140,42 @@ def print_stat(name, now_val, avg_val, num_f=3, color=cyan):
 
 
 
+import matplotlib
+import matplotlib.cm
+
+def colorize(value, vmin=0, vmax=1, cmap='viridis'):
+    """
+    A utility function for Torch/Numpy that maps a grayscale image to a matplotlib
+    colormap for use with TensorBoard image summaries.
+    By default it will normalize the input value to the range 0..1 before mapping
+    to a grayscale colormap.
+    Arguments:
+      - value: 2D Tensor of shape [height, width] or 3D Tensor of shape
+        [height, width, 1].
+      - vmin: the minimum value of the range used for normalization.
+        (Default: value minimum)
+      - vmax: the maximum value of the range used for normalization.
+        (Default: value maximum)
+      - cmap: a valid cmap named for use with matplotlib's `get_cmap`.
+        (Default: Matplotlib default colormap)
+    
+    Returns a 4D uint8 tensor of shape [height, width, 4].
+    """
+
+    # normalize
+    vmin = value.min() if vmin is None else vmin
+    vmax = value.max() if vmax is None else vmax
+    if vmin!=vmax:
+        value = (value - vmin) / (vmax - vmin) # vmin..vmax
+    else:
+        # Avoid 0-division
+        value = value*0.
+    # squeeze last dim if it exists
+    value = value.squeeze()
+
+    cmapper = matplotlib.cm.get_cmap(cmap)
+    value = cmapper(value,bytes=True) # (nxmx4)
+    return np.ascontiguousarray(value[:, :, :3].transpose(2, 0, 1))
 
 
 
@@ -155,7 +191,8 @@ def get_grid(*args, sz = 256):
     for a in args:
         b = a[:num_img].detach().cpu().float()
         if b.shape[1] == 1:
-            grid.append(torch.cat( [b, b, b], dim=1 ) )
+            grid.append(torch.cat( [ torch.from_numpy(colorize(bb)).float()[None, ...]/255 for bb in b ], dim=0 ))
+            # grid.append(torch.cat( [b, b, b], dim=1 ) )
         else: 
             grid.append(b[:, :3])
 

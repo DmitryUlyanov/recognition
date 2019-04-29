@@ -25,7 +25,7 @@ parser.add = parser.add_argument
 parser.add('--img_dir', type=str, action='append', dest='img_dirs', default=[], help='')
 # OR
 parser.add('--imgs_dir',  type=str,  default="",  help='')
-parser.add('--suffix',    type=str,  default="", )
+parser.add('--split_type',    type=str,  default="random", choices=['random', 'folders'] )
 parser.add('--separator', type=str,  default="_")
 
 parser.add('--save_dir', type=str, default="", help='', required=True)
@@ -46,7 +46,8 @@ if args.imgs_dir != "":
     assert len(args.img_dirs) == 0, 'Please pass either --img_dir <> either --imgs_dir <>'
     # classes =
 
-    args.img_dirs = sorted(glob(f"{args.imgs_dir}/*"))
+    # print([x[0] for x in os.walk(args.imgs_dir)])
+    args.img_dirs = sorted([x for x in glob(f"{args.imgs_dir}/*") if os.path.isdir(x)])
 else: 
     assert len(args.img_dirs) > 0, 'Please pass either --img_dir <> either --imgs_dir <>'
 
@@ -75,8 +76,18 @@ print(f"Found {len(df)} pairs.")
 df = shuffle(df).reset_index(drop=True)
 
 train_size = 1.0 - args.val_size - args.test_size
-df_train, df_val, df_test = np.split(df, [int(train_size*len(df)), int((1 - args.test_size)*len(df))])
 
+if args.split_type == 'random':
+    df_train, df_val, df_test = np.split(df, [int(train_size*len(df)), int((1 - args.test_size)*len(df))])
+else:
+    basedirs = df[args.img_dirs[0]].apply(os.path.basedir).apply(os.path.basedir)
+
+    dirs = basedirs.unique()
+    dirs_train, dirs_val, dirs_test = np.split(df, [int(train_size * len(dirs)), int((1 - args.test_size) * len(dirs))])
+
+    df_train = df.loc[basedirs.isin(dirs_train)]
+    df_val   = df.loc[basedirs.isin(dirs_val)]
+    df_test  = df.loc[basedirs.isin(dirs_test)]
 
 # # Get test images
 
