@@ -80,7 +80,7 @@ def get_image_pil(path):
     img = Image.open(path).convert('RGB')
     return img
 
-def inin_w(worker_id):
+def init_w(worker_id):
     np.random.seed(random.randint(0, 2**31))
 
 

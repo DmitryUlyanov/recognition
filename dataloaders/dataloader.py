@@ -5,7 +5,7 @@ import pandas as pd
 from torch.utils.data import DataLoader
 
 
-from dataloaders.common import inin_w
+from dataloaders.common import init_w
 from utils.utils import load_module_
 
 
@@ -45,18 +45,18 @@ class Dataloader:
             if args.num_samples_train != -1 and phase =='train': 
                 sampler = torch.utils.data.RandomSampler(range(len(dataset)), replacement=True, num_samples=args.num_samples_train)
 
-            if sampler is None: 
-                sampler = torch.utils.data.RandomSampler(range(len(dataset)), replacement=False)
+            if phase !='train' and sampler is None:
+                sampler = torch.utils.data.SequentialSampler(range(len(dataset)))
 
             return DataLoader(
                             dataset,
                             batch_size=args.batch_size,
                             num_workers=args.num_workers,
-                            sampler=sampler if phase == 'train' else None,
+                            sampler=sampler,
                             pin_memory=True,
                             drop_last=True if phase == 'train' else False,
-                            shuffle=None if phase == 'train' else True,
-                            worker_init_fn=inin_w)
+                            shuffle=None,
+                            worker_init_fn=init_w)
 
 
 
