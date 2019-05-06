@@ -208,6 +208,8 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
         # ===================
         #       Validate
         # ===================
+        torch.cuda.empty_cache()
+        
         if stage_args.set_eval_mode_in_test:
             model.eval()
         else:
