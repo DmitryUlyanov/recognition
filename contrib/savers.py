@@ -128,7 +128,7 @@ def img_per_item(data, save_dir, iteration, dtype='uint8'):
     data = tensor_to_np_recursive(copy.deepcopy(data))
     path = f'{save_dir}/{iteration}.npz'
 
-    for pred, name in zip(data['output'], data['names']):
+    for i, (pred, name) in enumerate(zip(data['output'], data['names'])):
 
         if dtype=='uint8':
             img_to_save = np.round(pred.transpose(1, 2, 0) * 255).astype(np.uint8)
@@ -140,6 +140,7 @@ def img_per_item(data, save_dir, iteration, dtype='uint8'):
             assert False
 
         cv2.imwrite(f'{save_dir}/{os.path.basename(name).split(".")[0]:>04}.png', img_to_save[:, :, ::-1],  [cv2.IMWRITE_PNG_COMPRESSION, 9])
+        # cv2.imwrite(f'{save_dir}/{iteration* len(data) + i:>05}.png', img_to_save[:, :, ::-1],  [cv2.IMWRITE_PNG_COMPRESSION, 9])
 
 
 def uint8_img_per_item(data, save_dir, iteration):
