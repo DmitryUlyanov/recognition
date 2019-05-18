@@ -90,6 +90,7 @@ class UNet(object):
         parser.add('--concat_x',      default=False, action='store_bool')
 
         parser.add('--upsample_mode', type=str, default="deconv")
+        parser.add('--downsample_mode', type=str, default="max")
         parser.add('--pad',           type=str, default="zero")
 
         parser.add('--norm_layer', type=str, default="in")
@@ -108,6 +109,7 @@ class UNet(object):
                      more_layers         = args.more_layers,
                      concat_x            = args.concat_x,
                      upsample_mode       = args.upsample_mode,
+                     downsample_mode     = args.downsample_mode,
                      pad                 = args.pad,
                      norm_layer          = args.norm_layer,
                      last_act            = args.last_act,

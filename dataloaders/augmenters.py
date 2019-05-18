@@ -63,7 +63,59 @@ class ImgAugTransform(object):
 
         return imgs, masks 
 
+
+class ImgAugTransformNew(object):
+    def __init__(self, shared_transform_pre=None, mask_transform=None, color_transform=None, shared_transform_post=None):
+        self.shared_transform_pre = shared_transform_pre if shared_transform_pre is not None else Identity
+        self.shared_transform_post = shared_transform_post if shared_transform_post is not None else Identity
+        self.mask_transform = mask_transform if mask_transform is not None else Identity
+        self.color_transform = color_transform if color_transform is not None else Identity
         
+    def to_deterministic(self):
+        self.shared_transform_pre_det  = self.shared_transform_pre.to_deterministic()
+        self.mask_transform_det  = self.mask_transform.to_deterministic()
+        
+        self.color_transform_det  = self.color_transform.to_deterministic()
+        self.shared_transform_post_det  = self.shared_transform_post.to_deterministic()
+
+
+    def __call__(self, color, masks=[], call_to_deterministic=True):
+        if not isinstance(color, list):
+            assert False
+
+        if call_to_deterministic:
+            self.to_deterministic()
+
+        pil = False
+        if isinstance(color[0], Image.Image):
+            pil = True
+            color = [np.array(img) for img in color]
+            masks = [np.array(img) for img in masks]
+
+
+        
+        
+        color  = [self.shared_transform_pre_det.augment_image(x) for x in color]
+        masks = [self.shared_transform_pre_det.augment_image(x) for x in masks]
+
+
+        masks = [self.mask_transform_det.augment_image(x) for x in masks]
+
+
+        color  = [self.color_transform_det.augment_image(x) for x in color]
+
+
+        color  = [self.shared_transform_post_det.augment_image(x) for x in color]
+        masks = [self.shared_transform_post_det.augment_image(x) for x in masks]
+
+        if pil:
+            color =  [Image.fromarray(x) for x in color]
+            masks = [Image.fromarray(x) for x in masks]
+
+        return color, masks 
+
+
+
 # -------- -----------------------------------
 # -------- GaussianBlurCV2 -------------------
 # --------------------------------------------

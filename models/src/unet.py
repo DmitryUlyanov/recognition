@@ -12,7 +12,7 @@ class UNet(nn.Module):
     '''
     def __init__(self, num_input_channels=3, num_output_channels=3, 
                        feature_scale=4, more_layers=0, concat_x=False,
-                       upsample_mode='deconv', pad='zero', norm_layer='in', last_act='sigmoid', need_bias=True):
+                       upsample_mode='deconv', pad='zero', norm_layer='in', last_act='sigmoid', need_bias=True, downsample_mode='max'):
         super(UNet, self).__init__()
 
         self.feature_scale = feature_scale
@@ -25,10 +25,10 @@ class UNet(nn.Module):
 
         self.start = unetConv2(num_input_channels, filters[0] if not concat_x else filters[0] - num_input_channels, norm_layer, need_bias, pad)
 
-        self.down1 = unetDown(filters[0], filters[1] if not concat_x else filters[1] - num_input_channels, norm_layer, need_bias, pad)
-        self.down2 = unetDown(filters[1], filters[2] if not concat_x else filters[2] - num_input_channels, norm_layer, need_bias, pad)
-        self.down3 = unetDown(filters[2], filters[3] if not concat_x else filters[3] - num_input_channels, norm_layer, need_bias, pad)
-        self.down4 = unetDown(filters[3], filters[4] if not concat_x else filters[4] - num_input_channels, norm_layer, need_bias, pad)
+        self.down1 = unetDown(filters[0], filters[1] if not concat_x else filters[1] - num_input_channels, norm_layer, need_bias, pad, downsample_mode)
+        self.down2 = unetDown(filters[1], filters[2] if not concat_x else filters[2] - num_input_channels, norm_layer, need_bias, pad, downsample_mode)
+        self.down3 = unetDown(filters[2], filters[3] if not concat_x else filters[3] - num_input_channels, norm_layer, need_bias, pad, downsample_mode)
+        self.down4 = unetDown(filters[3], filters[4] if not concat_x else filters[4] - num_input_channels, norm_layer, need_bias, pad, downsample_mode)
 
         # more downsampling layers
         if self.more_layers > 0:
@@ -131,10 +131,13 @@ class unetConv2(nn.Module):
 
 
 class unetDown(nn.Module):
-    def __init__(self, in_size, out_size, norm_layer, need_bias, pad):
+    def __init__(self, in_size, out_size, norm_layer, need_bias, pad, downsample_mode):
         super(unetDown, self).__init__()
         self.conv= unetConv2(in_size, out_size, norm_layer, need_bias, pad)
-        self.down= nn.MaxPool2d(2, 2)
+        if downsample_mode == 'down':
+            self.down= nn.MaxPool2d(2, 2)
+        elif downsample_mode == 'avg':
+            self.down= nn.AvgPool2d(2, 2)
 
     def forward(self, inputs):
         outputs= self.down(inputs)
