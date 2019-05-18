@@ -21,7 +21,8 @@ class Dataloader:
 
     def get_args(self, parser):
         parser.add('--num_workers', type=int, default=4,   help='Number of data loading workers.')
-        parser.add('--batch_size',  type=int, default=64,  help='Batch size')
+        parser.add('--batch_size',  type=int, default=64,  help='Batch size (train)')
+        parser.add('--batch_size_val',  type=int, default=64,  help='Batch size (val)')
         parser.add('--num_samples_train',  type=int, default=-1, help='Image size')
 
         parser.add('--train_phase_mode',     default='train="crop,augment"^val="crop"',  action="store_bool")
@@ -47,6 +48,8 @@ class Dataloader:
 
             if phase !='train' and sampler is None:
                 sampler = torch.utils.data.SequentialSampler(range(len(dataset)))
+
+            batch_size = args.batch_size if phase == 'train' else args.batch_size_val
 
             return DataLoader(
                             dataset,
