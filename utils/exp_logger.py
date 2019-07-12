@@ -105,7 +105,6 @@ def setup_logging(args, default_args, args_to_ignore, exp_name_use_date=False, a
                 s += f' <(echo {p})'
 
         cmd = f'cat <(git ls-files)'\
-              f' <(cd exp_logger && git ls-files | awk \'$0="exp_logger/"$0\')'\
               f' <(cd extensions/{args.extension} && git ls-files | awk \'$0="extensions/{args.extension}/"$0\')'\
               f'{s}'\
               f' | sort -u | tar Tczf - "{save_dir}/source.tar.gz"'

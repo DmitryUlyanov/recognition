@@ -87,7 +87,7 @@ class ImgAugTransformNew(object):
             self.to_deterministic()
 
         pil = False
-        if isinstance(color[0], Image.Image):
+        if len(color) > 0 and isinstance(color[0], Image.Image):
             pil = True
             color = [np.array(img) for img in color]
             masks = [np.array(img) for img in masks]
