@@ -34,30 +34,6 @@ import torch.multiprocessing
 
 torch.multiprocessing.set_sharing_strategy('file_system')
 
-# def exit_gracefully(signum, frame):
-#     # restore the original signal handler as otherwise evil things will happen
-#     # in raw_input when CTRL+C is pressed, and our signal handler is not re-entrant
-#     signal.signal(signal.SIGINT, original_sigint)
-
-#     try:
-#         if input("\nReally quit? (y/n)> ").lower().startswith('y'):
-#             sys.exit(1)
-
-#     except KeyboardInterrupt:
-#         print("Ok ok, quitting")
-#         sys.exit(1)
-
-#     # restore the exit gracefully handler here    
-#     signal.signal(signal.SIGINT, exit_gracefully)
-
-
-
-# original_sigint = signal.getsignal(signal.SIGINT)
-# signal.signal(signal.SIGINT, exit_gracefully)
-
-
-
-
 # Define main args
 parser = MyArgumentParser(conflict_handler='resolve')
 parser.add = parser.add_argument
@@ -97,8 +73,8 @@ parser.add('--args-to-ignore', type=str, default="checkpoint,splits_dir,experime
 parser.add('--comment',         type=str, default='', help='Just any type of comment')
 
 # Misc
-parser.add('--random_seed',     type=int, default=123, help='')
-parser.add('--device', type=str, default='cuda')
+parser.add('--random_seed',     type=int, default=123, help='Random seed')
+parser.add('--device', type=str, default='cuda' ,choices=['cuda', 'cpu'])
 
 
 
