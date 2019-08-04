@@ -1,3 +1,0 @@
-[submodule "exp_logger"]
-	path = exp_logger
-	url = git@github.com:DmitryUlyanov/exp_logger.git
