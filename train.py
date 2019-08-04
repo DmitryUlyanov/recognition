@@ -129,7 +129,7 @@ def set_param_grad(model, value, set_eval_mode=True):
     if set_eval_mode:
         model.eval()
 
-
+# Process stages
 if 'stages' not in vars(args): 
     args.stages = {'main': {}}
 
@@ -141,7 +141,7 @@ if args.stage is not None:
     else:
         args.stages = {'main': {}}
 
-
+# Run 
 for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
 
     print (yellow(f' - Starting stage "{stage_name}"!'))
@@ -163,6 +163,7 @@ for stage_num, (stage_name, stage_args_) in enumerate(args.stages.items()):
         optimizer = apex.fp16_utils.FP16_Optimizer(optimizer, dynamic_loss_scale=True, verbose=False)
     else:
         optimizer.backward = lambda x: x.backward()
+        
     # Go
     for epoch in range(0, stage_args.num_epochs):
 
