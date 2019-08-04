@@ -136,10 +136,11 @@ def load_config(extension, config_name, args):
         assert False, red(f' - Extension is not specified.')
 
 
-    config_extension = f'extensions/{extension}/{config_name}.yaml'
+    config_extension     = f'extensions/{extension}/{config_name}.yaml'
+    config_extension_dir = f'extensions/{extension}/configs/{config_name}.yaml'
     config_lib       = f'configs/{config_name}.yaml'
     
-    for config in [config_extension, config_lib]:
+    for config in [config_extension, config_lib, config_extension_dir]:
         if os.path.exists(config):
             print ((f' - Using config {green(config)}'))
             return get_update_defaults_fn(config, args)
